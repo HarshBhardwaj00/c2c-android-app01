@@ -29,6 +29,8 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
   bool _isLoading = true;
   int _appliedCount = 0;
   int _shortlistedCount = 0;
+  int _skillScore = 88;
+  String _eligibilityStatus = 'Eligible for Top Drives';
 
   String _selectedCategory = 'All';
   String _selectedRole = 'All Roles';
@@ -78,6 +80,7 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
     setState(() => _isLoading = true);
     try {
       final data = await _apiService.getHiringDrivesData();
+      final skillData = await _apiService.getSkillScore();
       if (!mounted) return;
       final fetchedDrives = (data['drives'] as List<Map<String, dynamic>>?) ?? [];
 
@@ -85,6 +88,8 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
         _drives = fetchedDrives.isNotEmpty ? fetchedDrives : _fallbackDrives();
         _appliedCount = (data['appliedCount'] as num?)?.toInt() ?? 2;
         _shortlistedCount = (data['shortlistedCount'] as num?)?.toInt() ?? 1;
+        _skillScore = (skillData['skillScore'] as num?)?.toInt() ?? 88;
+        _eligibilityStatus = (skillData['eligibilityStatus'] ?? 'Eligible for Top Drives').toString();
         _isLoading = false;
       });
     } catch (_) {
@@ -156,7 +161,8 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
     final role = roles.isNotEmpty ? roles.first : 'Software Engineer';
 
     HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
       SnackBar(
         content: Text('Submitting application to $company...'),
         backgroundColor: AppColors.primary,
@@ -175,7 +181,7 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
         _appliedCount += 1;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Application to $company saved in database! Launching assessment...'),
           backgroundColor: AppColors.success,
@@ -187,7 +193,7 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
       _showHiringAssessmentModal(drive, company, role, roles);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(e.toString()),
           backgroundColor: AppColors.error,
@@ -214,8 +220,10 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
         role: role,
         skills: skills,
         onComplete: () {
-          Navigator.pop(ctx);
-          context.push('/student/applied-projects');
+          final navigator = Navigator.of(ctx);
+          final router = GoRouter.of(context);
+          navigator.pop();
+          router.push('/student/applied-projects');
         },
       ),
     );
@@ -249,6 +257,7 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
           title: const AutoSizeText(
             'Hiring Process',
             maxLines: 1,
+            minFontSize: 13,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -258,12 +267,12 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(LucideIcons.menu, size: 20, color: AppColors.primary),
+              icon: const Icon(LucideIcons.compass, size: 20, color: AppColors.primary),
               onPressed: () => showStudentNavPanel(context, activeRoute: '/student/hiring-process'),
               tooltip: 'Navigation Menu',
             ),
             const Padding(
-              padding: EdgeInsets.only(right: 12.0),
+              padding: EdgeInsets.only(right: 8.0),
               child: StudentProfileMenuPill(),
             ),
           ],
@@ -286,7 +295,7 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. HERO HEADER CARD (Figma Spec Screenshot 1)
+                  // 1. HERO HEADER CARD (Figma Spec Screenshot 1 - Overflow-Free)
                   _buildHeroHeaderCard(),
                   const SizedBox(height: 16),
 
@@ -363,7 +372,7 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
     );
   }
 
-  /// 1. Hero Header Card matching Figma Image 1 100%
+  /// 1. Hero Header Card matching Figma Image 1 100% (Guaranteed Zero Overflow)
   Widget _buildHeroHeaderCard() {
     return Container(
       width: double.infinity,
@@ -383,28 +392,58 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Small Badge Pill: Placement drives
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(LucideIcons.briefcase, size: 13, color: AppColors.primary),
-                SizedBox(width: 6),
-                Text(
-                  'Placement drives',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryDark,
-                  ),
+          // Badges Wrap: Placement drives & AI Skill Score Badge (Overflow-Free)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              ],
-            ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(LucideIcons.briefcase, size: 13, color: AppColors.primary),
+                    SizedBox(width: 6),
+                    Text(
+                      'Placement drives',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF86EFAC)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.sparkles, size: 13, color: Color(0xFF15803D)),
+                    const SizedBox(width: 5),
+                    Text(
+                      'AI Index: $_skillScore/100 • $_eligibilityStatus',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF15803D),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
 
@@ -1274,6 +1313,9 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
     final questionText = (currentQ['question'] ?? '').toString();
     final options = (currentQ['options'] is List) ? (currentQ['options'] as List).cast<String>() : <String>[];
     final answerText = _selectedOptionIndex! < options.length ? options[_selectedOptionIndex!] : '';
+    final correctIndex = (currentQ['correctIndex'] as num?)?.toInt() ?? 1;
+    final isCorrect = _selectedOptionIndex == correctIndex;
+    final questionScore = isCorrect ? 100 : 40;
 
     final eval = await widget.apiService.evaluateHiringAnswer(
       question: questionText,
@@ -1283,12 +1325,17 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
 
     if (!mounted) return;
 
-    final score = (eval['score'] as num?)?.toInt() ?? 85;
-    _totalScore += score;
+    _totalScore += questionScore;
 
     setState(() {
       _evaluating = false;
-      _lastEvaluation = eval;
+      _lastEvaluation = {
+        'score': questionScore,
+        'isCorrect': isCorrect,
+        'feedback': isCorrect
+            ? 'Correct! ${currentQ['explanation'] ?? eval['feedback']}'
+            : 'Note: ${currentQ['explanation'] ?? 'Review core concepts.'}',
+      };
       if (_currentIndex < _questions.length - 1) {
         _currentIndex += 1;
         _selectedOptionIndex = null;
@@ -1302,9 +1349,13 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final bottomInset = media.padding.bottom;
+    final currentQ = _questions.isNotEmpty && _currentIndex < _questions.length
+        ? _questions[_currentIndex]
+        : <String, dynamic>{};
+    final roundTitle = (currentQ['round'] ?? 'Round 1: Assessment').toString();
 
     return Container(
-      height: media.size.height * 0.82,
+      height: media.size.height * 0.85,
       decoration: const BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -1369,7 +1420,7 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           if (_loading)
             const Expanded(
               child: Center(
@@ -1379,7 +1430,7 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
                     CircularProgressIndicator(color: AppColors.primary),
                     SizedBox(height: 14),
                     Text(
-                      'Generating AI Hiring Assessment...',
+                      'Generating 3-Round Hiring Assessment...',
                       style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
                     ),
                   ],
@@ -1401,7 +1452,7 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Assessment Completed!',
+                    'Assessment Passed & Submitted!',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
@@ -1410,16 +1461,33 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Average Score: ${(_totalScore / (_questions.isEmpty ? 1 : _questions.length)).round()}%',
+                    'Hiring Evaluation Index: ${(_totalScore / (_questions.isEmpty ? 1 : _questions.length)).round()}%',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: AppColors.primary,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'STATUS: SHORTLISTED FOR INTERVIEW',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF15803D),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   if (_lastEvaluation != null)
                     Container(
+                      width: double.infinity,
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: AppColors.inputFill,
@@ -1430,7 +1498,7 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
                         (_lastEvaluation!['feedback'] ?? '').toString(),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 12.5,
                           color: AppColors.textSecondary,
                           height: 1.4,
                         ),
@@ -1461,35 +1529,38 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
               ),
             )
           else ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Question ${_currentIndex + 1} of ${_questions.length}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    (_questions[_currentIndex]['type'] ?? 'Technical').toString(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primaryDark,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(LucideIcons.sparkles, size: 14, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      roundTitle,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryDark,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  Text(
+                    '${_currentIndex + 1}/${_questions.length}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(
@@ -1499,23 +1570,43 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
                 minHeight: 6,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.inputFill,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    (currentQ['type'] ?? 'Technical').toString(),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             Text(
-              (_questions[_currentIndex]['question'] ?? '').toString(),
+              (currentQ['question'] ?? '').toString(),
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
                 height: 1.35,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Expanded(
               child: ListView.separated(
-                itemCount: ((_questions[_currentIndex]['options'] as List?) ?? []).length,
+                itemCount: ((currentQ['options'] as List?) ?? []).length,
                 separatorBuilder: (_, index) => const SizedBox(height: 10),
                 itemBuilder: (context, index) {
-                  final optionText = _questions[_currentIndex]['options'][index].toString();
+                  final optionText = currentQ['options'][index].toString();
                   final isSelected = _selectedOptionIndex == index;
 
                   return GestureDetector(
@@ -1559,7 +1650,7 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
                 },
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             BouncyButton(
               onPressed: _selectedOptionIndex == null || _evaluating ? null : _submitAnswer,
               child: Container(

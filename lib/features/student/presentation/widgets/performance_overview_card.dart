@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../domain/models/student_dashboard_model.dart';
 
 class PerformanceOverviewCard extends StatelessWidget {
-  final List<dynamic> performanceData;
+  final List<ScoreHistoryData> performanceData;
 
   const PerformanceOverviewCard({
     super.key,
@@ -89,7 +90,7 @@ class PerformanceOverviewCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: performanceData.map((item) {
-                        final score = (item['score'] as num?)?.toDouble() ?? 50;
+                        final score = item.score.toDouble().clamp(0.0, 100.0);
                         return Expanded(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.end,
@@ -106,7 +107,7 @@ class PerformanceOverviewCard extends StatelessWidget {
                               FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
-                                  item['month']?.toString() ?? '',
+                                  item.month,
                                   style: const TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,

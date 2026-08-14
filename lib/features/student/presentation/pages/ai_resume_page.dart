@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../data/student_api_service.dart';
+import '../widgets/resume_section_widgets.dart';
+import '../../../auth/presentation/widgets/bouncy_button.dart';
 
 class EducationEntryData {
   String id;
@@ -588,70 +591,140 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
   }
 
   void _showPreviewSheet() {
+    HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.85,
-        maxChildSize: 0.95,
-        minChildSize: 0.5,
-        builder: (context, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Resume Live Preview (${_template.toUpperCase()})',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+      builder: (modalContext) {
+        final bottomSystemPadding = MediaQuery.of(modalContext).padding.bottom == 0
+            ? 16.0
+            : MediaQuery.of(modalContext).padding.bottom;
+
+        return DraggableScrollableSheet(
+          initialChildSize: 0.88,
+          maxChildSize: 0.96,
+          minChildSize: 0.5,
+          builder: (sheetContext, scrollController) => Container(
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: EdgeInsets.only(
+              top: 16,
+              left: 18,
+              right: 18,
+              bottom: bottomSystemPadding,
+            ),
+            child: Column(
+              children: [
+                // Top Drag Handle
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(LucideIcons.x, color: AppColors.textSecondary),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const Divider(),
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  physics: const BouncingScrollPhysics(),
+                ),
+                const SizedBox(height: 12),
+
+                // Header Row with Zero-Overflow Protection (Fixed 45px overflow)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildFormattedResumePreview(),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryLight,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(LucideIcons.fileText, size: 16, color: AppColors.primary),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: AutoSizeText(
+                              'Resume Live Preview (${_template.toUpperCase()})',
+                              maxLines: 1,
+                              minFontSize: 11,
+                              style: const TextStyle(
+                                fontSize: 16.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    IconButton(
+                      icon: const Icon(LucideIcons.x, color: AppColors.textSecondary, size: 20),
+                      onPressed: () => Navigator.pop(modalContext),
+                      tooltip: 'Close Preview',
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: () {
-                  _copyToClipboard();
-                  Navigator.pop(context);
-                },
-                icon: const Icon(LucideIcons.copy, size: 18),
-                label: const Text('Copy Resume as Plain Text'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 8),
+                const Divider(height: 1, color: AppColors.border),
+                const SizedBox(height: 12),
+
+                // Scrollable Formatted Resume Body
+                Expanded(
+                  child: ListView(
+                    controller: scrollController,
+                    physics: const BouncingScrollPhysics(),
+                    children: [
+                      RepaintBoundary(
+                        child: _buildFormattedResumePreview(),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+
+                // Action Button with Navigation Safety (Fixed bottom overlap)
+                BouncyButton(
+                  onPressed: () {
+                    _copyToClipboard();
+                    Navigator.pop(modalContext);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(LucideIcons.copy, size: 18, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text(
+                          'Copy Resume as Plain Text',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -672,17 +745,25 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
           foregroundColor: Colors.white,
           leading: IconButton(
             icon: const Icon(LucideIcons.arrowLeft),
-            onPressed: () => Navigator.canPop(context) ? Navigator.pop(context) : null,
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                context.go('/student/dashboard');
+              }
+            },
           ),
-          title: const Text(
+          title: const AutoSizeText(
             'AI Resume Builder',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            maxLines: 1,
+            minFontSize: 13,
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
           ),
           actions: [
             if (_isSaving)
               const Center(
                 child: Padding(
-                  padding: EdgeInsets.only(right: 12),
+                  padding: EdgeInsets.only(right: 8),
                   child: SizedBox(
                     width: 16,
                     height: 16,
@@ -694,12 +775,12 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                 ),
               ),
             IconButton(
-              icon: const Icon(LucideIcons.eye),
+              icon: const Icon(LucideIcons.eye, size: 20),
               tooltip: 'Preview Resume',
               onPressed: _showPreviewSheet,
             ),
             IconButton(
-              icon: const Icon(LucideIcons.refreshCw),
+              icon: const Icon(LucideIcons.refreshCw, size: 20),
               tooltip: 'Reload',
               onPressed: _loadResumeData,
             ),
@@ -796,12 +877,14 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                       const SizedBox(height: 16),
 
                       // Experience & Projects Section
-                      _buildSectionCard(
+                      ResumeSectionCard(
                         title: 'Experience & Projects',
                         icon: LucideIcons.briefcase,
-                        iconColor: Colors.blue.shade700,
-                        trailing: TextButton.icon(
-                          onPressed: () {
+                        iconColor: AppColors.primary,
+                        entryCount: _experience.length,
+                        trailing: ResumeAddButton(
+                          label: 'Add Entry',
+                          onTap: () {
                             setState(() {
                               _experience.add(
                                 ExperienceEntryData(
@@ -811,20 +894,20 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                             });
                             _triggerAutoSave();
                           },
-                          icon: const Icon(LucideIcons.plus, size: 14),
-                          label: const Text('Add Entry'),
                         ),
                         child: _buildExperienceList(),
                       ),
                       const SizedBox(height: 16),
 
                       // Education Section
-                      _buildSectionCard(
+                      ResumeSectionCard(
                         title: 'Education',
                         icon: LucideIcons.graduationCap,
-                        iconColor: Colors.green.shade700,
-                        trailing: TextButton.icon(
-                          onPressed: () {
+                        iconColor: AppColors.success,
+                        entryCount: _education.length,
+                        trailing: ResumeAddButton(
+                          label: 'Add Education',
+                          onTap: () {
                             setState(() {
                               _education.add(
                                 EducationEntryData(
@@ -834,20 +917,20 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                             });
                             _triggerAutoSave();
                           },
-                          icon: const Icon(LucideIcons.plus, size: 14),
-                          label: const Text('Add Education'),
                         ),
                         child: _buildEducationList(),
                       ),
                       const SizedBox(height: 16),
 
                       // Certifications Section
-                      _buildSectionCard(
+                      ResumeSectionCard(
                         title: 'Certifications',
                         icon: LucideIcons.award,
-                        iconColor: Colors.purple.shade700,
-                        trailing: TextButton.icon(
-                          onPressed: () {
+                        iconColor: AppColors.accentViolet,
+                        entryCount: _certifications.length,
+                        trailing: ResumeAddButton(
+                          label: 'Add Cert',
+                          onTap: () {
                             setState(() {
                               _certifications.add(
                                 CertificationEntryData(
@@ -857,8 +940,6 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                             });
                             _triggerAutoSave();
                           },
-                          icon: const Icon(LucideIcons.plus, size: 14),
-                          label: const Text('Add Cert'),
                         ),
                         child: _buildCertificationsList(),
                       ),
@@ -919,7 +1000,11 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -936,7 +1021,6 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                   ],
                 ),
               ),
-              const Spacer(),
               // Template Selector
               SegmentedButton<String>(
                 segments: const [
@@ -1008,7 +1092,14 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
             children: [
               Icon(LucideIcons.bot, size: 18, color: AppColors.accentViolet),
               SizedBox(width: 8),
-              Text('Quick AI Note Extractor', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.accentViolet)),
+              Expanded(
+                child: AutoSizeText(
+                  'Quick AI Note Extractor',
+                  maxLines: 1,
+                  minFontSize: 11,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.accentViolet),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -1033,17 +1124,22 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                 ),
               ),
               const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: _isAssistantLoading ? null : _classifyAssistantNote,
-                icon: _isAssistantLoading
-                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(LucideIcons.sparkles, size: 14),
-                label: const Text('Add with AI'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentViolet,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: ElevatedButton.icon(
+                    onPressed: _isAssistantLoading ? null : _classifyAssistantNote,
+                    icon: _isAssistantLoading
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(LucideIcons.sparkles, size: 14),
+                    label: const Text('Add with AI'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accentViolet,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1073,30 +1169,34 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
-                children: [
-                  Icon(LucideIcons.target, size: 18, color: AppColors.success),
-                  SizedBox(width: 8),
-                  AutoSizeText(
-                    'ATS Score Optimizer',
-                    maxLines: 1,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                  ),
-                ],
+              const Icon(LucideIcons.target, size: 18, color: AppColors.success),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: AutoSizeText(
+                  'ATS Score Optimizer',
+                  maxLines: 1,
+                  minFontSize: 11,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                ),
               ),
-              ElevatedButton.icon(
-                onPressed: _isAtsLoading ? null : _analyzeAtsScore,
-                icon: _isAtsLoading
-                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(LucideIcons.cpu, size: 14),
-                label: const Text('Analyze Score'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              const SizedBox(width: 8),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: ElevatedButton.icon(
+                    onPressed: _isAtsLoading ? null : _analyzeAtsScore,
+                    icon: _isAtsLoading
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(LucideIcons.cpu, size: 14),
+                    label: const Text('Analyze Score'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1163,6 +1263,7 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
                 padding: const EdgeInsets.all(6),
@@ -1170,9 +1271,24 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                 child: Icon(icon, size: 16, color: iconColor),
               ),
               const SizedBox(width: 8),
-              Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-              const Spacer(),
-              ?trailing,
+              Expanded(
+                child: AutoSizeText(
+                  title,
+                  maxLines: 1,
+                  minFontSize: 11,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: 6),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: trailing,
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 14),
@@ -1183,40 +1299,66 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
   }
 
   Widget _buildPersonalInfoForm() {
-    return Column(
-      children: [
-        Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 340;
+        if (isNarrow) {
+          return Column(
+            children: [
+              _buildTextField('Full Name', _fullNameController, LucideIcons.user),
+              const SizedBox(height: 8),
+              _buildTextField('Title / Headline', _titleController, LucideIcons.briefcase),
+              const SizedBox(height: 8),
+              _buildTextField('Email', _emailController, LucideIcons.mail),
+              const SizedBox(height: 8),
+              _buildTextField('Phone', _phoneController, LucideIcons.phone),
+              const SizedBox(height: 8),
+              _buildTextField('Location', _locationController, LucideIcons.mapPin),
+              const SizedBox(height: 8),
+              _buildTextField('Target Role', _targetRoleController, LucideIcons.target),
+              const SizedBox(height: 8),
+              _buildTextField('LinkedIn Profile', _linkedinController, LucideIcons.linkedin),
+              const SizedBox(height: 8),
+              _buildTextField('GitHub Profile', _githubController, LucideIcons.github),
+            ],
+          );
+        }
+        return Column(
           children: [
-            Expanded(child: _buildTextField('Full Name', _fullNameController, LucideIcons.user)),
-            const SizedBox(width: 12),
-            Expanded(child: _buildTextField('Title / Headline', _titleController, LucideIcons.briefcase)),
+            Row(
+              children: [
+                Expanded(child: _buildTextField('Full Name', _fullNameController, LucideIcons.user)),
+                const SizedBox(width: 12),
+                Expanded(child: _buildTextField('Title / Headline', _titleController, LucideIcons.briefcase)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _buildTextField('Email', _emailController, LucideIcons.mail)),
+                const SizedBox(width: 12),
+                Expanded(child: _buildTextField('Phone', _phoneController, LucideIcons.phone)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _buildTextField('Location', _locationController, LucideIcons.mapPin)),
+                const SizedBox(width: 12),
+                Expanded(child: _buildTextField('Target Role', _targetRoleController, LucideIcons.target)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _buildTextField('LinkedIn Profile', _linkedinController, LucideIcons.linkedin)),
+                const SizedBox(width: 12),
+                Expanded(child: _buildTextField('GitHub Profile', _githubController, LucideIcons.github)),
+              ],
+            ),
           ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(child: _buildTextField('Email', _emailController, LucideIcons.mail)),
-            const SizedBox(width: 12),
-            Expanded(child: _buildTextField('Phone', _phoneController, LucideIcons.phone)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(child: _buildTextField('Location', _locationController, LucideIcons.mapPin)),
-            const SizedBox(width: 12),
-            Expanded(child: _buildTextField('Target Role', _targetRoleController, LucideIcons.target)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(child: _buildTextField('LinkedIn Profile', _linkedinController, LucideIcons.linkedin)),
-            const SizedBox(width: 12),
-            Expanded(child: _buildTextField('GitHub Profile', _githubController, LucideIcons.github)),
-          ],
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -1271,158 +1413,96 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
   }
 
   Widget _buildExperienceList() {
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _experience.length,
-      separatorBuilder: (context, index) => const Divider(height: 24),
-      itemBuilder: (context, index) {
-        final item = _experience[index];
-        final isEnhancing = _enhancingExperienceId == item.id;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text('Experience #${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(LucideIcons.trash2, size: 16, color: AppColors.error),
-                  onPressed: () {
-                    setState(() {
-                      _experience.removeAt(index);
-                    });
-                    _triggerAutoSave();
-                  },
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(child: _buildTextField('Role / Position', item.roleController, LucideIcons.userCheck)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildTextField('Organization / Company', item.organizationController, LucideIcons.building)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _buildTextField('Duration (e.g. Summer 2025)', item.durationController, LucideIcons.calendar),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Bullet Points (One per line)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-                TextButton.icon(
-                  onPressed: isEnhancing ? null : () => _enhanceExperienceBullets(item),
-                  icon: isEnhancing
-                      ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(LucideIcons.sparkles, size: 12),
-                  label: const Text('Enhance with AI', style: TextStyle(fontSize: 11)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            TextField(
-              controller: item.bulletsController,
-              maxLines: 3,
-              onChanged: (_) => _triggerAutoSave(),
-              style: const TextStyle(fontSize: 12),
-              decoration: InputDecoration(
-                hintText: '• Engineered microservices...\n• Reduced query latency by 40%...',
-                filled: true,
-                fillColor: AppColors.inputFill,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-              ),
-            ),
-          ],
-        );
-      },
+    if (_experience.isEmpty) {
+      return const ResumeEmptySection(
+        icon: LucideIcons.briefcase,
+        color: AppColors.primary,
+        message: 'No experience added yet. Tap "Add Entry" to start building your work history.',
+      );
+    }
+    return Column(
+      children: [
+        for (var i = 0; i < _experience.length; i++) ...[
+          ExperienceEntryCard(
+            index: i,
+            isEnhancing: _enhancingExperienceId == _experience[i].id,
+            roleController: _experience[i].roleController,
+            organizationController: _experience[i].organizationController,
+            durationController: _experience[i].durationController,
+            bulletsController: _experience[i].bulletsController,
+            onFieldChanged: (_) => _triggerAutoSave(),
+            onEnhance: () => _enhanceExperienceBullets(_experience[i]),
+            onDelete: () {
+              setState(() {
+                _experience.removeAt(i);
+              });
+              _triggerAutoSave();
+            },
+          ),
+          if (i != _experience.length - 1) const SizedBox(height: 10),
+        ],
+      ],
     );
   }
 
   Widget _buildEducationList() {
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _education.length,
-      separatorBuilder: (context, index) => const Divider(height: 24),
-      itemBuilder: (context, index) {
-        final item = _education[index];
-        return Column(
-          children: [
-            Row(
-              children: [
-                Text('Education #${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(LucideIcons.trash2, size: 16, color: AppColors.error),
-                  onPressed: () {
-                    setState(() {
-                      _education.removeAt(index);
-                    });
-                    _triggerAutoSave();
-                  },
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(child: _buildTextField('Degree / Program', item.degreeController, LucideIcons.graduationCap)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildTextField('Institution', item.institutionController, LucideIcons.building)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(child: _buildTextField('Duration (e.g. 2022 - 2026)', item.durationController, LucideIcons.calendar)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildTextField('CGPA / Marks', item.gpaController, LucideIcons.award)),
-              ],
-            ),
-          ],
-        );
-      },
+    if (_education.isEmpty) {
+      return const ResumeEmptySection(
+        icon: LucideIcons.graduationCap,
+        color: AppColors.success,
+        message: 'No education added yet. Tap "Add Education" to include your degrees.',
+      );
+    }
+    return Column(
+      children: [
+        for (var i = 0; i < _education.length; i++) ...[
+          EducationEntryCard(
+            index: i,
+            degreeController: _education[i].degreeController,
+            institutionController: _education[i].institutionController,
+            durationController: _education[i].durationController,
+            gpaController: _education[i].gpaController,
+            onFieldChanged: (_) => _triggerAutoSave(),
+            onDelete: () {
+              setState(() {
+                _education.removeAt(i);
+              });
+              _triggerAutoSave();
+            },
+          ),
+          if (i != _education.length - 1) const SizedBox(height: 10),
+        ],
+      ],
     );
   }
 
   Widget _buildCertificationsList() {
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _certifications.length,
-      separatorBuilder: (context, index) => const Divider(height: 24),
-      itemBuilder: (context, index) {
-        final item = _certifications[index];
-        return Column(
-          children: [
-            Row(
-              children: [
-                Text('Cert #${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(LucideIcons.trash2, size: 16, color: AppColors.error),
-                  onPressed: () {
-                    setState(() {
-                      _certifications.removeAt(index);
-                    });
-                    _triggerAutoSave();
-                  },
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(child: _buildTextField('Certificate Name', item.nameController, LucideIcons.award)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildTextField('Issuing Authority', item.issuerController, LucideIcons.building)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _buildTextField('Issue Date', item.dateController, LucideIcons.calendar),
-          ],
-        );
-      },
+    if (_certifications.isEmpty) {
+      return const ResumeEmptySection(
+        icon: LucideIcons.award,
+        color: AppColors.accentViolet,
+        message: 'No certifications added yet. Tap "Add Cert" to showcase your credentials.',
+      );
+    }
+    return Column(
+      children: [
+        for (var i = 0; i < _certifications.length; i++) ...[
+          CertificationEntryCard(
+            index: i,
+            nameController: _certifications[i].nameController,
+            issuerController: _certifications[i].issuerController,
+            dateController: _certifications[i].dateController,
+            onFieldChanged: (_) => _triggerAutoSave(),
+            onDelete: () {
+              setState(() {
+                _certifications.removeAt(i);
+              });
+              _triggerAutoSave();
+            },
+          ),
+          if (i != _certifications.length - 1) const SizedBox(height: 10),
+        ],
+      ],
     );
   }
 
@@ -1475,74 +1555,300 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
   }
 
   Widget _buildFormattedResumePreview() {
+    final fullName = _fullNameController.text.trim().isEmpty ? 'Your Full Name' : _fullNameController.text.trim();
+    final headline = _titleController.text.trim().isEmpty ? 'Professional Headline' : _titleController.text.trim();
+
+    final contactItems = [
+      _emailController.text.trim(),
+      _phoneController.text.trim(),
+      _locationController.text.trim(),
+      _linkedinController.text.trim(),
+      _githubController.text.trim(),
+    ].where((s) => s.isNotEmpty).toList();
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            _fullNameController.text.isEmpty ? 'Your Full Name' : _fullNameController.text,
+          // Full Name
+          AutoSizeText(
+            fullName,
+            maxLines: 1,
+            minFontSize: 16,
             style: TextStyle(
               fontSize: 22,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w900,
               color: _template == 'modern' ? AppColors.primary : AppColors.textPrimary,
+              letterSpacing: -0.4,
             ),
           ),
-          Text(
-            _titleController.text.isEmpty ? 'Professional Headline' : _titleController.text,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+          const SizedBox(height: 2),
+
+          // Professional Headline
+          AutoSizeText(
+            headline,
+            maxLines: 1,
+            minFontSize: 12,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '${_emailController.text} | ${_phoneController.text} | ${_locationController.text}',
-            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-          ),
-          const Divider(height: 20),
-          if (_summaryController.text.isNotEmpty) ...[
-            const Text('PROFESSIONAL SUMMARY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(_summaryController.text, style: const TextStyle(fontSize: 12)),
+          const SizedBox(height: 8),
+
+          // Contact Details (Filtered, Zero-Overflow Wrap)
+          if (contactItems.isNotEmpty) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: contactItems.map((item) {
+                return Text(
+                  item,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textMuted,
+                  ),
+                );
+              }).toList(),
+            ),
             const SizedBox(height: 12),
           ],
+
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 14),
+
+          // Professional Summary
+          if (_summaryController.text.trim().isNotEmpty) ...[
+            const Text(
+              'PROFESSIONAL SUMMARY',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 11.5,
+                color: AppColors.textPrimary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _summaryController.text.trim(),
+              style: const TextStyle(
+                fontSize: 12.5,
+                height: 1.45,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
+
+          // Skills
           if (_skills.isNotEmpty) ...[
-            const Text('SKILLS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(_skills.join(' • '), style: const TextStyle(fontSize: 12)),
-            const SizedBox(height: 12),
+            const Text(
+              'SKILLS',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 11.5,
+                color: AppColors.textPrimary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _skills.map((skill) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  decoration: BoxDecoration(
+                    color: AppColors.inputFill,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    skill,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 14),
           ],
+
+          // Experience
           if (_experience.isNotEmpty) ...[
-            const Text('EXPERIENCE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-            const SizedBox(height: 4),
+            const Text(
+              'EXPERIENCE',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 11.5,
+                color: AppColors.textPrimary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
             ..._experience.map(
               (e) => Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${e.roleController.text} — ${e.organizationController.text} (${e.durationController.text})',
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                    if (e.bulletsController.text.isNotEmpty)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: AutoSizeText(
+                            '${e.roleController.text.trim().isNotEmpty ? e.roleController.text.trim() : "Role"} — ${e.organizationController.text.trim().isNotEmpty ? e.organizationController.text.trim() : "Organization"}',
+                            maxLines: 2,
+                            minFontSize: 11,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12.5,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        if (e.durationController.text.trim().isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '(${e.durationController.text.trim()})',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (e.bulletsController.text.trim().isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(left: 8, top: 2),
-                        child: Text(e.bulletsController.text, style: const TextStyle(fontSize: 11)),
+                        padding: const EdgeInsets.only(left: 4, top: 4),
+                        child: Text(
+                          e.bulletsController.text.trim(),
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            height: 1.4,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ),
                   ],
                 ),
               ),
             ),
+            const SizedBox(height: 6),
           ],
+
+          // Education
           if (_education.isNotEmpty) ...[
-            const Text('EDUCATION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-            const SizedBox(height: 4),
+            const Text(
+              'EDUCATION',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 11.5,
+                color: AppColors.textPrimary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
             ..._education.map(
-              (e) => Text(
-                '${e.degreeController.text} — ${e.institutionController.text} (${e.durationController.text})',
-                style: const TextStyle(fontSize: 12),
+              (e) => Padding(
+                padding: const EdgeInsets.only(bottom: 6.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: AutoSizeText(
+                        '${e.degreeController.text.trim().isNotEmpty ? e.degreeController.text.trim() : "Degree"} — ${e.institutionController.text.trim().isNotEmpty ? e.institutionController.text.trim() : "Institution"}',
+                        maxLines: 2,
+                        minFontSize: 11,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (e.durationController.text.trim().isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        '(${e.durationController.text.trim()})',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+
+          // Certifications
+          if (_certifications.isNotEmpty) ...[
+            const Text(
+              'CERTIFICATIONS',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 11.5,
+                color: AppColors.textPrimary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ..._certifications.map(
+              (c) => Padding(
+                padding: const EdgeInsets.only(bottom: 6.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: AutoSizeText(
+                        '${c.nameController.text.trim().isNotEmpty ? c.nameController.text.trim() : "Certificate"} — ${c.issuerController.text.trim().isNotEmpty ? c.issuerController.text.trim() : "Issuer"}',
+                        maxLines: 2,
+                        minFontSize: 11,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (c.dateController.text.trim().isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        '(${c.dateController.text.trim()})',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ],

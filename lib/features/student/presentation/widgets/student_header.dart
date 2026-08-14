@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:auto_size_text/auto_size_text.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'student_nav_panel.dart';
 import 'student_profile_menu_pill.dart';
@@ -19,8 +18,8 @@ class StudentHeader extends StatelessWidget {
     required this.onSearchPressed,
     required this.onNotificationPressed,
     this.unreadCount = 3,
-    this.userName = 'hh',
-    this.userEmail = 'harshbhara70@gmail.com',
+    this.userName = 'Student',
+    this.userEmail = 'student@c2c.org',
   });
 
   @override
@@ -64,62 +63,7 @@ class StudentHeader extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(width: isCompact ? 6 : 10),
-
-          // Title & Subtitle Block - Clickable to open Navigation Panel
-          Expanded(
-            child: InkWell(
-              onTap: () => showStudentNavPanel(
-                context,
-                notificationCount: unreadCount,
-              ),
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Flexible(
-                          child: AutoSizeText(
-                            'C2C Student',
-                            maxLines: 1,
-                            minFontSize: 12,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primaryDark,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          LucideIcons.chevronDown,
-                          size: 14,
-                          color: AppColors.primary.withValues(alpha: 0.8),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      'CAMPUS2CORPORATE',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: isCompact ? 8 : 9,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textMuted.withValues(alpha: 0.9),
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          const Spacer(),
 
           // Right Action Row - Wrapped in FittedBox to guarantee zero overflow on narrow screens
           FittedBox(

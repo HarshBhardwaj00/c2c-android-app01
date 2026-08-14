@@ -25,16 +25,20 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
   late final StudentApiService _apiService;
   List<Map<String, dynamic>> _applications = [];
   bool _isLoading = true;
+  bool _hasError = false;
+  String? _errorMessage;
   String _selectedFilter = 'All';
 
-  final List<String> _filterTabs = [
-    'All',
-    'Applied',
-    'Under Review',
-    'Interviewing',
-    'Accepted',
-    'Rejected',
-  ];
+  /// Filter tabs are derived from the statuses actually returned by the backend,
+  /// so they always reflect real data instead of showing dead filters.
+  List<String> get _filterTabs {
+    final statuses = <String>{'All'};
+    for (final app in _applications) {
+      final status = (app['status'] ?? '').toString();
+      if (status.isNotEmpty) statuses.add(status);
+    }
+    return statuses.toList();
+  }
 
   @override
   void initState() {
@@ -44,7 +48,13 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
   }
 
   Future<void> _fetchApplications() async {
-    setState(() => _isLoading = true);
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = null;
+    });
+
     try {
       final apps = await _apiService.getApplications();
       if (!mounted) return;
@@ -52,9 +62,13 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
         _applications = apps;
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _errorMessage = e.toString();
+      });
     }
   }
 
@@ -83,8 +97,29 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
     }).length;
   }
 
-  Future<void> _confirmWithdraw(String applicationId, String projectTitle) async {
+  Future<void> _confirmWithdraw(Map<String, dynamic> app) async {
     HapticFeedback.mediumImpact();
+    final applicationId = (app['id'] ?? '').toString();
+    final projectTitle = (app['title'] ?? 'Project Application').toString();
+
+    // Assignment submissions cannot be withdrawn via the student portal
+    // (no student-facing backend endpoint exists). Show a clear message
+    // instead of attempting a doomed network call.
+    if ((app['source'] ?? 'assignment').toString() != 'application') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Withdrawal is not available for assignment submissions on the '
+            'student portal. Please contact your college TPO for assistance.',
+          ),
+          backgroundColor: AppColors.textSecondary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+        ),
+      );
+      return;
+    }
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -143,15 +178,382 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
     }
   }
 
+  Future<void> _showProjectSubmissionAndDetailsModal(Map<String, dynamic> app) async {
+    HapticFeedback.mediumImpact();
+    final id = (app['id'] ?? '').toString();
+    final title = (app['title'] ?? 'Project Application').toString();
+    final company = (app['company'] ?? 'Company').toString();
+    final status = (app['status'] ?? 'Applied').toString();
+    final initialUrl = (app['submissionUrl'] ?? '').toString();
+    final initialContent = (app['content'] ?? '').toString();
+    final feedback = (app['feedback'] ?? '').toString();
+    final score = app['score'];
+
+    final urlController = TextEditingController(text: initialUrl);
+    final notesController = TextEditingController(text: initialContent);
+    bool isSubmitting = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalContext) {
+        final bottomInset = MediaQuery.of(modalContext).viewInsets.bottom;
+        final bottomSystemPadding = MediaQuery.of(modalContext).padding.bottom == 0
+            ? 16.0
+            : MediaQuery.of(modalContext).padding.bottom;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: bottomInset + bottomSystemPadding,
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                padding: const EdgeInsets.all(20),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Handle bar
+                      Center(
+                        child: Container(
+                          width: 36,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.border,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Header Row
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                AutoSizeText(
+                                  company,
+                                  maxLines: 1,
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                AutoSizeText(
+                                  title,
+                                  maxLines: 2,
+                                  minFontSize: 14,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.textPrimary,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryLight,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: AutoSizeText(
+                              status,
+                              maxLines: 1,
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primaryDark,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Score Badge Banner if available
+                      if (score != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.successLight,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(LucideIcons.award, size: 18, color: AppColors.success),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: AutoSizeText(
+                                  'Evaluation Score: $score / 100',
+                                  maxLines: 1,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.success,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // Reviewer Feedback if available
+                      if (feedback.isNotEmpty) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.inputFill,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(LucideIcons.messageSquare, size: 14, color: AppColors.primary),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Reviewer Feedback',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                feedback,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: AppColors.textSecondary,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+
+                      const Text(
+                        'SUBMISSION DELIVERABLES',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textMuted,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Submission URL TextField
+                      TextField(
+                        controller: urlController,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        decoration: InputDecoration(
+                          hintText: 'https://github.com/myusername/my-project',
+                          hintStyle: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+                          prefixIcon: const Icon(LucideIcons.link, size: 16, color: AppColors.textMuted),
+                          filled: true,
+                          fillColor: AppColors.inputFill,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.border),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Content Notes TextField
+                      TextField(
+                        controller: notesController,
+                        maxLines: 2,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        decoration: InputDecoration(
+                          hintText: 'Add implementation details or reviewer notes...',
+                          hintStyle: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+                          filled: true,
+                          fillColor: AppColors.inputFill,
+                          contentPadding: const EdgeInsets.all(12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.border),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Submit Action Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.cardDark,
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          onPressed: isSubmitting
+                              ? null
+                              : () async {
+                                  final url = urlController.text.trim();
+                                  if (url.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Please enter a GitHub or Project Demo URL'),
+                                        backgroundColor: AppColors.error,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  final messenger = ScaffoldMessenger.of(context);
+                                  final navigator = Navigator.of(modalContext);
+                                  setModalState(() => isSubmitting = true);
+                                  try {
+                                    await _apiService.submitProjectWork(
+                                      projectId: id,
+                                      title: title,
+                                      submissionUrl: url,
+                                      content: notesController.text.trim(),
+                                    );
+
+                                    if (!context.mounted) return;
+                                    navigator.pop();
+                                    messenger.showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Project deliverable submitted successfully!'),
+                                        backgroundColor: AppColors.success,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                    _fetchApplications();
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    setModalState(() => isSubmitting = false);
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text(e.toString()),
+                                        backgroundColor: AppColors.error,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                },
+                          icon: isSubmitting
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Icon(LucideIcons.send, size: 16, color: Colors.white),
+                          label: Text(
+                            isSubmitting ? 'Submitting...' : 'Submit Deliverable Work',
+                            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Builds a plain-text summary of the currently loaded applications from local
+  /// state and copies it to the clipboard.
+  Future<void> _exportReport() async {
+    if (_applications.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No applications to export yet.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final buffer = StringBuffer()
+      ..writeln('C2C — Applied Projects Report')
+      ..writeln('Generated: ${DateTime.now().toString().split('.').first}')
+      ..writeln('-------------------------------------');
+
+    for (final app in _applications) {
+      buffer
+        ..writeln('• ${app['title'] ?? 'Untitled Project'}')
+        ..writeln('  Company: ${app['company'] ?? '-'}')
+        ..writeln('  Status: ${app['status'] ?? '-'}')
+        ..writeln('  Applied on: ${app['appliedOn'] ?? '-'}')
+        ..writeln('  Stipend: ${app['stipend'] ?? '-'}')
+        ..writeln('  Location: ${app['location'] ?? '-'}');
+      if (app['score'] != null) {
+        buffer.writeln('  Score: ${app['score']}/100');
+      }
+      buffer.writeln();
+    }
+
+    await Clipboard.setData(ClipboardData(text: buffer.toString()));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Report copied to clipboard'),
+        backgroundColor: AppColors.cardDark,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.sizeOf(context);
     final isTablet = screenSize.width > 600;
     final horizontalPadding = (screenSize.width * 0.045).clamp(14.0, 24.0);
 
-    final appliedCount = _countByStatus('Applied');
-    final underReviewCount = _countByStatus('Under Review');
+    final submittedCount = _countByStatus('Submitted');
+    final gradedCount = _countByStatus('Graded');
     final filteredList = _filteredApplications;
+
+    final bottomPadding = MediaQuery.of(context).padding.bottom == 0
+        ? 16.0
+        : MediaQuery.of(context).padding.bottom;
 
     return PopScope(
       canPop: false,
@@ -201,9 +603,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).padding.bottom == 0
-                    ? 16.0
-                    : MediaQuery.of(context).padding.bottom,
+                bottom: bottomPadding,
                 top: 16.0,
                 left: horizontalPadding,
                 right: horizontalPadding,
@@ -211,20 +611,28 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. HERO HEADER CARD (Figma Spec Image 1)
-                  _buildHeroHeaderCard(),
+                  // 1. HERO HEADER CARD
+                  RepaintBoundary(child: _buildHeroHeaderCard()),
                   const SizedBox(height: 16),
 
-                  // 2. TOP METRICS STAT CARDS ROW (Figma Spec Image 1 & Image 2)
-                  _buildTopMetricsSection(_applications.length, appliedCount, underReviewCount),
+                  // 2. TOP METRICS STAT CARDS ROW (Zero-Overflow Protected)
+                  RepaintBoundary(
+                    child: _buildTopMetricsSection(
+                      _applications.length,
+                      submittedCount,
+                      gradedCount,
+                    ),
+                  ),
                   const SizedBox(height: 16),
 
-                  // 3. HORIZONTAL STATUS FILTER TABS BAR (Figma Spec Image 1)
+                  // 3. HORIZONTAL STATUS FILTER TABS BAR
                   _buildStatusFilterBar(),
                   const SizedBox(height: 18),
 
-                  // 4. MAIN APPLICATIONS CONTAINER CARD (Figma Spec Image 1)
-                  _buildApplicationsMainCard(filteredList, isTablet),
+                  // 4. MAIN APPLICATIONS CONTAINER CARD
+                  RepaintBoundary(
+                    child: _buildApplicationsMainCard(filteredList, isTablet),
+                  ),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -235,7 +643,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
     );
   }
 
-  /// 1. Hero Header Card matching Figma Image 1 100%
+  /// 1. Hero Header Card
   Widget _buildHeroHeaderCard() {
     return Container(
       width: double.infinity,
@@ -308,11 +716,12 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
     );
   }
 
-  /// 2. Top Metrics Section featuring Applications Card (Image 2) + Applied & Under Review (Image 1)
-  Widget _buildTopMetricsSection(int totalSubmitted, int appliedCount, int underReviewCount) {
+  /// 2. Top Metrics Section featuring Applications Card + Submitted & Graded Cards
+  /// Protected against all horizontal RenderBox overflows with Flexible & AutoSizeText.
+  Widget _buildTopMetricsSection(int totalSubmitted, int submittedCount, int gradedCount) {
     return Column(
       children: [
-        // Applications Stat Card (Figma Spec Image 2)
+        // Applications Stat Card
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -332,21 +741,24 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(
+                  const Icon(
                     LucideIcons.barChart2,
                     size: 18,
                     color: AppColors.primary,
                   ),
                   SizedBox(width: 8),
-                  Text(
-                    'Applications',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.2,
+                  Expanded(
+                    child: AutoSizeText(
+                      'Applications',
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
                     ),
                   ),
                 ],
@@ -356,13 +768,16 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    '$totalSubmitted',
-                    style: const TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF0F172A),
-                      letterSpacing: -1,
+                  Expanded(
+                    child: AutoSizeText(
+                      '$totalSubmitted',
+                      maxLines: 1,
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.cardDark,
+                        letterSpacing: -1,
+                      ),
                     ),
                   ),
                   Container(
@@ -382,9 +797,10 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              const Text(
+              const SizedBox(height: 8),
+              const AutoSizeText(
                 'Total submitted',
+                maxLines: 1,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -396,13 +812,13 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
         ),
         const SizedBox(height: 12),
 
-        // 2-Column Row for Applied & Under Review Stat Cards (Figma Spec Image 1)
+        // 2-Column Row for Submitted & Graded Stat Cards
         Row(
           children: [
-            // Applied Card
+            // Submitted Card (Fixed RenderBox overflow with Expanded + AutoSizeText)
             Expanded(
               child: Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(18),
@@ -421,74 +837,19 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(7),
                           decoration: BoxDecoration(
                             color: const Color(0xFFEFF6FF),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(LucideIcons.send, size: 16, color: Color(0xFF2563EB)),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Applied',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '$appliedCount',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // Under Review Card
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFEF3C7),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(LucideIcons.dollarSign, size: 16, color: Color(0xFFD97706)),
+                          child: const Icon(LucideIcons.send, size: 15, color: Color(0xFF2563EB)),
                         ),
                         const SizedBox(width: 6),
                         const Expanded(
-                          child: Text(
-                            'Under Review',
+                          child: AutoSizeText(
+                            'Submitted',
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            minFontSize: 10,
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,
@@ -498,13 +859,74 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '$underReviewCount',
+                    const SizedBox(height: 10),
+                    AutoSizeText(
+                      '$submittedCount',
+                      maxLines: 1,
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF0F172A),
+                        color: AppColors.cardDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Graded Card
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: AppColors.warningLight,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(LucideIcons.dollarSign, size: 15, color: Color(0xFFD97706)),
+                        ),
+                        const SizedBox(width: 6),
+                        const Expanded(
+                          child: AutoSizeText(
+                            'Graded',
+                            maxLines: 1,
+                            minFontSize: 10,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    AutoSizeText(
+                      '$gradedCount',
+                      maxLines: 1,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.cardDark,
                       ),
                     ),
                   ],
@@ -517,7 +939,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
     );
   }
 
-  /// 3. Horizontal Status Filter Bar matching Figma Image 1 100%
+  /// 3. Horizontal Status Filter Bar
   Widget _buildStatusFilterBar() {
     return Container(
       padding: const EdgeInsets.all(6),
@@ -543,17 +965,18 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFF0F172A) : Colors.transparent,
+                    color: isSelected ? AppColors.cardDark : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         tab,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12.5,
                           fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                           color: isSelected ? Colors.white : AppColors.textSecondary,
                         ),
@@ -570,7 +993,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                         child: Text(
                           '$count',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 10.5,
                             fontWeight: FontWeight.w800,
                             color: isSelected ? Colors.white : AppColors.textMuted,
                           ),
@@ -587,7 +1010,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
     );
   }
 
-  /// 4. Applications Main Card Container matching Figma Spec 100%
+  /// 4. Applications Main Card Container
   Widget _buildApplicationsMainCard(List<Map<String, dynamic>> filteredList, bool isTablet) {
     return Container(
       width: double.infinity,
@@ -604,39 +1027,37 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'APPLICATIONS',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textMuted,
-                      letterSpacing: 0.6,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'APPLICATIONS',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textMuted,
+                        letterSpacing: 0.6,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    _selectedFilter == 'All' ? 'All applications' : '$_selectedFilter applications',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                    const SizedBox(height: 3),
+                    AutoSizeText(
+                      _selectedFilter == 'All' ? 'All applications' : '$_selectedFilter applications',
+                      maxLines: 1,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               IconButton(
                 icon: const Icon(LucideIcons.share2, size: 18, color: AppColors.textMuted),
                 onPressed: () {
                   HapticFeedback.lightImpact();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Exporting applications summary report...'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                  _exportReport();
                 },
                 tooltip: 'Export Report',
               ),
@@ -644,7 +1065,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
           ),
           const SizedBox(height: 16),
 
-          // Dynamic Body: Loading / Empty State (Figma Dotted Card) / Active List
+          // Dynamic Body: Loading / Error / Empty State / Active List
           if (_isLoading)
             const Center(
               child: Padding(
@@ -652,6 +1073,8 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                 child: CircularProgressIndicator(color: AppColors.primary),
               ),
             )
+          else if (_hasError)
+            _buildErrorStateCard()
           else if (filteredList.isEmpty)
             _buildFigmaEmptyStateCard()
           else
@@ -671,7 +1094,62 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
     );
   }
 
-  /// Empty State Card Container matching Figma Dotted Design 100%
+  /// Error State Card with Retry Action
+  Widget _buildErrorStateCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+      decoration: BoxDecoration(
+        color: AppColors.inputFill.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          const Icon(LucideIcons.alertCircle, size: 30, color: AppColors.error),
+          const SizedBox(height: 12),
+          const Text(
+            'Failed to load applications',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _errorMessage ?? 'Please check your connection and try again.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 14),
+          BouncyButton(
+            onPressed: _fetchApplications,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+              decoration: BoxDecoration(
+                color: AppColors.cardDark,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.rotateCcw, size: 14, color: Colors.white),
+                  SizedBox(width: 6),
+                  Text(
+                    'Retry',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Empty State Card Container matching Figma Spec
   Widget _buildFigmaEmptyStateCard() {
     return Container(
       width: double.infinity,
@@ -679,10 +1157,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
       decoration: BoxDecoration(
         color: AppColors.inputFill.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.border,
-          style: BorderStyle.solid,
-        ),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
@@ -727,9 +1202,8 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
     );
   }
 
-  /// Individual Application Card Item
+  /// Individual Application Card Item (Zero-Overflow Protected)
   Widget _buildApplicationCardItem(Map<String, dynamic> app) {
-    final id = (app['id'] ?? '').toString();
     final title = (app['title'] ?? 'Project Application').toString();
     final company = (app['company'] ?? 'Company').toString();
     final status = (app['status'] ?? 'Applied').toString();
@@ -744,14 +1218,16 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
     Color statusBg = const Color(0xFFEFF6FF);
     Color statusText = const Color(0xFF2563EB);
 
-    if (status.toLowerCase().contains('review')) {
-      statusBg = const Color(0xFFFEF3C7);
+    if (status.toLowerCase().contains('review') || status.toLowerCase().contains('submit')) {
+      statusBg = AppColors.warningLight;
       statusText = const Color(0xFFD97706);
-    } else if (status.toLowerCase().contains('interview') || status.toLowerCase().contains('accept')) {
-      statusBg = const Color(0xFFECFDF5);
+    } else if (status.toLowerCase().contains('graded') ||
+        status.toLowerCase().contains('interview') ||
+        status.toLowerCase().contains('accept')) {
+      statusBg = AppColors.successLight;
       statusText = const Color(0xFF059669);
     } else if (status.toLowerCase().contains('reject') || status.toLowerCase().contains('withdraw')) {
-      statusBg = const Color(0xFFFEF2F2);
+      statusBg = AppColors.errorLight;
       statusText = const Color(0xFFDC2626);
     }
 
@@ -770,10 +1246,10 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(
+                child: AutoSizeText(
                   company,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  minFontSize: 10,
                   style: const TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
@@ -781,14 +1257,16 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusBg,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
+                child: AutoSizeText(
                   status,
+                  maxLines: 1,
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w800,
@@ -804,6 +1282,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
           AutoSizeText(
             title,
             maxLines: 2,
+            minFontSize: 13,
             style: const TextStyle(
               fontSize: 15.5,
               fontWeight: FontWeight.w800,
@@ -814,46 +1293,62 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
           ),
           const SizedBox(height: 10),
 
-          // Info Metrics Row: Stipend & Location & Applied Date
-          Row(
+          // Info Metrics Wrap (Stipend & Location & Applied Date) - Zero horizontal overflow
+          Wrap(
+            spacing: 12,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Icon(LucideIcons.dollarSign, size: 13, color: AppColors.success),
-              const SizedBox(width: 2),
-              Text(
-                stipend,
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.success,
-                ),
+              // Stipend
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(LucideIcons.dollarSign, size: 13, color: AppColors.success),
+                  const SizedBox(width: 2),
+                  Text(
+                    stipend,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.success,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              if (location.isNotEmpty) ...[
-                const Icon(LucideIcons.mapPin, size: 13, color: AppColors.textMuted),
-                const SizedBox(width: 3),
-                Text(
-                  location,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
+
+              // Location
+              if (location.isNotEmpty)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.mapPin, size: 13, color: AppColors.textMuted),
+                    const SizedBox(width: 3),
+                    Text(
+                      location,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-              ],
-              const Icon(LucideIcons.calendar, size: 13, color: AppColors.textMuted),
-              const SizedBox(width: 3),
-              Expanded(
-                child: Text(
-                  appliedOn.isNotEmpty ? appliedOn : 'Recently',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textMuted,
+
+              // Applied Date
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(LucideIcons.calendar, size: 13, color: AppColors.textMuted),
+                  const SizedBox(width: 3),
+                  Text(
+                    appliedOn.isNotEmpty ? appliedOn : 'Recently',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
@@ -892,9 +1387,11 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              if (!status.toLowerCase().contains('withdraw') && !status.toLowerCase().contains('reject'))
+              if (!status.toLowerCase().contains('withdraw') &&
+                  !status.toLowerCase().contains('reject') &&
+                  (app['source'] ?? '').toString() == 'application') ...[
                 TextButton(
-                  onPressed: () => _confirmWithdraw(id, title),
+                  onPressed: () => _confirmWithdraw(app),
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     minimumSize: Size.zero,
@@ -909,21 +1406,14 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                     ),
                   ),
                 ),
-              const SizedBox(width: 8),
+                const SizedBox(width: 8),
+              ],
               BouncyButton(
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Viewing status timeline for "$title"'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
+                onPressed: () => _showProjectSubmissionAndDetailsModal(app),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A),
+                    color: AppColors.cardDark,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Row(

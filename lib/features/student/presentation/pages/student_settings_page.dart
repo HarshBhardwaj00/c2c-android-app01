@@ -50,15 +50,15 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
   final _confirmPasswordController = TextEditingController();
 
   // Notification toggles (canonical backend keys)
-  bool? _emailNotifications;
-  bool? _smsAlerts;
-  bool? _assignmentReminders;
-  bool? _mentorSessionAlerts;
-  bool? _placementDriveUpdates;
+  bool _emailNotifications = true;
+  bool _smsAlerts = false;
+  bool _assignmentReminders = true;
+  bool _mentorSessionAlerts = true;
+  bool _placementDriveUpdates = true;
 
   // Privacy toggles
-  bool? _visibleToRecruiters;
-  bool? _showOnLeaderboards;
+  bool _visibleToRecruiters = true;
+  bool _showOnLeaderboards = true;
   bool _twoFactorAuth = false;
 
   // Appearance
@@ -104,7 +104,7 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
       final security =
           (settings['security'] as Map<String, dynamic>?) ?? const {};
 
-      bool? readBool(Map<String, dynamic> source, Object? primary,
+      bool readBool(Map<String, dynamic> source, Object primary, bool fallback,
           [Object? alias]) {
         final value = source[primary];
         if (value is bool) return value;
@@ -112,22 +112,22 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
           final alt = source[alias];
           if (alt is bool) return alt;
         }
-        return null;
+        return fallback;
       }
 
       setState(() {
         _emailController.text = profile['email']?.toString() ?? '';
 
-        _emailNotifications = readBool(notifs, 'email');
-        _smsAlerts = readBool(notifs, 'sms');
-        _assignmentReminders = readBool(notifs, 'assignments');
-        _mentorSessionAlerts = readBool(notifs, 'mentorSessions');
-        _placementDriveUpdates = readBool(notifs, 'marketing');
+        _emailNotifications = readBool(notifs, 'email', true, 'emailNotifications');
+        _smsAlerts = readBool(notifs, 'sms', false, 'smsAlerts');
+        _assignmentReminders = readBool(notifs, 'assignments', true, 'assignmentUpdates');
+        _mentorSessionAlerts = readBool(notifs, 'mentorSessions', true, 'mentorSessionAlerts');
+        _placementDriveUpdates = readBool(notifs, 'marketing', true, 'placementDriveUpdates');
 
         _visibleToRecruiters =
-            readBool(privacy, 'profileVisibleToRecruiters', 'recruiterVisible');
+            readBool(privacy, 'profileVisibleToRecruiters', true, 'recruiterVisible');
         _showOnLeaderboards =
-            readBool(privacy, 'showActivityStatus', 'leaderboard');
+            readBool(privacy, 'showActivityStatus', true, 'leaderboard');
         _twoFactorAuth =
             security['twoFactorEnabled'] == true ||
             security['twoFactorEnabledAt'] != null ||
@@ -285,30 +285,28 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
   }
 
   Future<void> _saveNotificationState() {
-    final notifications = <String, dynamic>{};
-    final email = _emailNotifications;
-    if (email != null) notifications['email'] = email;
-    final sms = _smsAlerts;
-    if (sms != null) notifications['sms'] = sms;
-    final assignments = _assignmentReminders;
-    if (assignments != null) notifications['assignments'] = assignments;
-    final mentorSessions = _mentorSessionAlerts;
-    if (mentorSessions != null) {
-      notifications['mentorSessions'] = mentorSessions;
-    }
-    final marketing = _placementDriveUpdates;
-    if (marketing != null) notifications['marketing'] = marketing;
+    final notifications = <String, dynamic>{
+      'email': _emailNotifications,
+      'emailNotifications': _emailNotifications,
+      'sms': _smsAlerts,
+      'smsAlerts': _smsAlerts,
+      'assignments': _assignmentReminders,
+      'assignmentUpdates': _assignmentReminders,
+      'mentorSessions': _mentorSessionAlerts,
+      'mentorSessionAlerts': _mentorSessionAlerts,
+      'marketing': _placementDriveUpdates,
+      'placementDriveUpdates': _placementDriveUpdates,
+    };
     return _persistSettings({
       'settings': {'notifications': notifications},
     });
   }
 
   Future<void> _savePrivacyState() {
-    final privacy = <String, dynamic>{};
-    final visible = _visibleToRecruiters;
-    if (visible != null) privacy['profileVisibleToRecruiters'] = visible;
-    final leaderboards = _showOnLeaderboards;
-    if (leaderboards != null) privacy['showActivityStatus'] = leaderboards;
+    final privacy = <String, dynamic>{
+      'profileVisibleToRecruiters': _visibleToRecruiters,
+      'showActivityStatus': _showOnLeaderboards,
+    };
     return _persistSettings({
       'settings': {'privacy': privacy},
     });
@@ -763,6 +761,7 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
           title: AutoSizeText(
             'Account Settings',
             maxLines: 1,
+            minFontSize: 13,
             style: textTheme.titleLarge?.copyWith(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -772,7 +771,7 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
           actions: [
             IconButton(
               icon: const Icon(
-                LucideIcons.menu,
+                LucideIcons.compass,
                 size: 20,
                 color: AppColors.primary,
               ),
@@ -783,7 +782,7 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
               tooltip: 'Navigation Menu',
             ),
             const Padding(
-              padding: EdgeInsets.only(right: 12.0),
+              padding: EdgeInsets.only(right: 8.0),
               child: StudentProfileMenuPill(),
             ),
           ],
@@ -1382,15 +1381,17 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
             style: textTheme.bodyMedium?.copyWith(fontSize: 12, height: 1.35),
           ),
           const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.end,
             children: [
               BouncyButton(
                 onPressed: _isDeleting ? null : _logout,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
-                    vertical: 8,
+                    vertical: 9,
                   ),
                   decoration: BoxDecoration(
                     color: scheme.surface,
@@ -1418,13 +1419,12 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
               BouncyButton(
                 onPressed: _isDeleting ? null : _requestAccountDeactivation,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
-                    vertical: 8,
+                    vertical: 9,
                   ),
                   decoration: BoxDecoration(
                     color: scheme.surface,
@@ -1452,13 +1452,12 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
               BouncyButton(
                 onPressed: _isDeleting ? null : _requestAccountDeletion,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
-                    vertical: 8,
+                    vertical: 9,
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.error,
@@ -1466,10 +1465,10 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
                   ),
                   child: _isDeleting
                       ? const SizedBox(
-                          width: 20,
-                          height: 20,
+                          width: 18,
+                          height: 18,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
+                            strokeWidth: 2,
                             color: Colors.white,
                           ),
                         )
@@ -1532,13 +1531,11 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
     required IconData icon,
     required String title,
     required String subtitle,
-    required bool? value,
+    required bool value,
     ValueChanged<bool>? onChanged,
   }) {
     final textTheme = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final isSet = value != null;
-    final effective = value ?? false;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -1566,13 +1563,11 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  isSet ? subtitle : '$subtitle\nNot set on server',
+                  subtitle,
                   style: textTheme.bodyMedium?.copyWith(
                     fontSize: 11.5,
                     height: 1.3,
-                    color: isSet
-                        ? scheme.onSurfaceVariant
-                        : AppColors.warning,
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -1580,10 +1575,10 @@ class _StudentSettingsPageState extends State<StudentSettingsPage> {
           ),
           const SizedBox(width: 12),
           Switch.adaptive(
-            value: effective,
+            value: value,
             activeTrackColor: AppColors.primary,
             activeThumbColor: Colors.white,
-            onChanged: (isSet && onChanged != null) ? onChanged : null,
+            onChanged: onChanged,
           ),
         ],
       ),

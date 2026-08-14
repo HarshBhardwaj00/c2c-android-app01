@@ -1,22 +1,11 @@
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
-
 class ApiEndpoints {
   static const String _overrideUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
-  /// Dynamically computes the backend base URL depending on the platform:
-  /// - Web / Chrome: http://localhost:5000/api
-  /// - Android Emulator: http://10.0.2.2:5000/api (10.0.2.2 points to host machine loopback)
-  /// - iOS / Desktop: http://127.0.0.1:5000/api
+  /// Backend base URL configured for mobile/web testing:
+  /// https://blend-monorail-reassign.ngrok-free.dev/api
   static String get baseUrl {
     if (_overrideUrl.isNotEmpty) return _overrideUrl;
-    if (kIsWeb) return 'http://localhost:5000/api';
-    try {
-      if (Platform.isAndroid) return 'http://10.0.2.2:5000/api';
-    } catch (_) {
-      // Fallback if Platform check fails
-    }
-    return 'http://127.0.0.1:5000/api';
+    return 'https://blend-monorail-reassign.ngrok-free.dev/api';
   }
 
   // Auth Endpoints (Student / General)

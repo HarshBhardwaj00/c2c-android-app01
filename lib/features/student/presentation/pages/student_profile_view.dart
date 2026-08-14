@@ -46,6 +46,11 @@ class _StudentProfileViewState extends State<StudentProfileView> {
   bool _isUploadingResume = false;
   String _formError = '';
 
+  // Backend-synced display data (no hardcoding)
+  String _status = 'Active';
+  List<Map<String, dynamic>> _education = [];
+  int _earnedCerts = 0;
+
   // Controllers for editable profile fields
   late final TextEditingController _fullNameController;
   late final TextEditingController _emailController;
@@ -132,6 +137,15 @@ class _StudentProfileViewState extends State<StudentProfileView> {
             if (p['skills'] is List) _skills = List<String>.from(p['skills']);
             if (p['resumeUrl'] != null) _resumeUrl = p['resumeUrl'].toString();
             if (p['photo'] != null) _photoUrl = p['photo'].toString();
+            if (p['status'] != null && p['status'].toString().isNotEmpty) {
+              _status = p['status'].toString();
+            }
+            if (p['education'] is List) {
+              _education = (p['education'] as List)
+                  .whereType<Map<String, dynamic>>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList();
+            }
           });
         }
       }
@@ -153,6 +167,7 @@ class _StudentProfileViewState extends State<StudentProfileView> {
         }
         _resumeUrl = (p['resumeUrl'] ?? p['resume'] ?? _resumeUrl).toString();
         _photoUrl = (p['photo'] ?? _photoUrl).toString();
+        _status = (p['status'] ?? _status).toString();
         setState(() => _isLoading = false);
         return;
       }
@@ -180,6 +195,13 @@ class _StudentProfileViewState extends State<StudentProfileView> {
         }
         _resumeUrl = (p['resumeUrl'] ?? p['resume'] ?? '').toString();
         _photoUrl = (p['photo'] ?? '').toString();
+        _status = (p['status'] ?? 'Active').toString();
+        if (p['education'] is List) {
+          _education = (p['education'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
         _isLoading = false;
       });
 
@@ -193,6 +215,12 @@ class _StudentProfileViewState extends State<StudentProfileView> {
       setState(() {
         _isLoading = false;
       });
+    }
+
+    // Fetch earned certificate count independently. Safe: returns 0 on failure.
+    final certCount = await _apiService.getEarnedCertificatesCount();
+    if (mounted) {
+      setState(() => _earnedCerts = certCount);
     }
   }
 
@@ -273,6 +301,7 @@ class _StudentProfileViewState extends State<StudentProfileView> {
       'resumeUrl': _resumeUrl,
       'resume': _resumeUrl,
       'photo': _photoUrl,
+      'education': _education,
     };
 
     try {
@@ -366,7 +395,10 @@ class _StudentProfileViewState extends State<StudentProfileView> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isUploadingPhoto = false);
-      final message = e is ApiException ? e.message : 'Could not upload photo';
+      String message = e is ApiException ? e.message : 'Could not upload photo';
+      if (message.contains('404') || message.contains('Not Found')) {
+        message = 'Photo upload API is not configured in backend yet.';
+      }
       _showSnack(message, isError: true);
     }
   }
@@ -399,7 +431,10 @@ class _StudentProfileViewState extends State<StudentProfileView> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isUploadingResume = false);
-      final message = e is ApiException ? e.message : 'Could not upload resume';
+      String message = e is ApiException ? e.message : 'Could not upload resume';
+      if (message.contains('404') || message.contains('Not Found')) {
+        message = 'Resume file upload API is not configured in backend. Please use "Save Link" to attach a resume URL.';
+      }
       _showSnack(message, isError: true);
     }
   }
@@ -437,77 +472,209 @@ class _StudentProfileViewState extends State<StudentProfileView> {
     });
   }
 
-  void _showResumeUploadDialog(BuildContext context) {
-    final urlController = TextEditingController(text: _resumeUrl);
+  bool get _isActiveStatus => _status.toLowerCase() == 'active';
+
+  void _removeEducation(int index) {
+    setState(() {
+      _education.removeAt(index);
+    });
+  }
+
+  String _educationYearsText(Map<String, dynamic> e) {
+    final start = (e['startYear'] ?? '').toString();
+    final end = (e['endYear'] ?? '').toString();
+    final grade = (e['grade'] ?? '').toString();
+    final parts = <String>[
+      if (start.isNotEmpty || end.isNotEmpty)
+        '$start${end.isNotEmpty ? ' - $end' : ''}',
+      if (grade.isNotEmpty) 'Grade: $grade',
+    ];
+    return parts.join('  •  ');
+  }
+
+  void _showAddEducationDialog() {
+    final degreeC = TextEditingController();
+    final instC = TextEditingController();
+    final fieldC = TextEditingController();
+    final startC = TextEditingController();
+    final endC = TextEditingController();
+    final gradeC = TextEditingController();
+
     showDialog(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
+          title: const Text('Add Education', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _dialogTextField(degreeC, 'Degree (e.g. B.Tech)', TextInputType.text),
+                _dialogTextField(instC, 'Institution / College', TextInputType.text),
+                _dialogTextField(fieldC, 'Field of study (e.g. CSE)', TextInputType.text),
+                Row(
+                  children: [
+                    Expanded(child: _dialogTextField(startC, 'Start year', TextInputType.number)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _dialogTextField(endC, 'End year', TextInputType.number)),
+                  ],
+                ),
+                _dialogTextField(gradeC, 'Grade / CGPA (optional)', TextInputType.number),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0F172A),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                final entry = <String, dynamic>{
+                  'degree': degreeC.text.trim(),
+                  'institution': instC.text.trim(),
+                  'fieldOfStudy': fieldC.text.trim(),
+                  'startYear': int.tryParse(startC.text.trim()),
+                  'endYear': int.tryParse(endC.text.trim()),
+                  'grade': gradeC.text.trim(),
+                };
+                Navigator.pop(dialogContext);
+                setState(() {
+                  _education.add(entry);
+                });
+              },
+              child: const Text('Add', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _dialogTextField(
+    TextEditingController controller,
+    String label,
+    TextInputType keyboardType,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: AppColors.inputFill,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showResumeUploadDialog(BuildContext context) {
+    final urlController = TextEditingController(text: _resumeUrl);
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        final screenSize = MediaQuery.sizeOf(dialogContext);
+        final keyboardInset = MediaQuery.viewInsetsOf(dialogContext).bottom;
+        final maxContentHeight = (screenSize.height * 0.55 - keyboardInset * 0.2).clamp(200.0, 480.0);
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          title: Row(
             children: [
-              Icon(LucideIcons.fileText, color: AppColors.primary, size: 22),
-              SizedBox(width: 10),
-              Text('Upload / Update Resume', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+              const Icon(LucideIcons.fileText, color: AppColors.primary, size: 22),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: AutoSizeText(
+                  'Upload / Update Resume',
+                  maxLines: 1,
+                  minFontSize: 12,
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+                ),
+              ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(dialogContext);
-                    _uploadResume();
-                  },
-                  icon: const Icon(LucideIcons.paperclip, size: 16, color: Colors.white),
-                  label: const Text('Choose PDF / Document File', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ),
-              const SizedBox(height: 14),
-              const Row(
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: maxContentHeight,
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: Divider()),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Text('OR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textMuted)),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        _uploadResume();
+                      },
+                      icon: const Icon(LucideIcons.paperclip, size: 16, color: Colors.white),
+                      label: const Text('Choose PDF / Document File', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
                   ),
-                  Expanded(child: Divider()),
+                  const SizedBox(height: 14),
+                  const Row(
+                    children: [
+                      Expanded(child: Divider()),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Text('OR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textMuted)),
+                      ),
+                      Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Enter a PDF document link or web URL:',
+                    style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: urlController,
+                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      hintText: 'https://c2c.edu/resumes/my_resume.pdf',
+                      hintStyle: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+                      filled: true,
+                      fillColor: AppColors.inputFill,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 10),
-              const Text(
-                'Enter a PDF document link or web URL:',
-                style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: urlController,
-                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
-                decoration: InputDecoration(
-                  hintText: 'https://c2c.edu/resumes/my_resume.pdf',
-                  hintStyle: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
-                  filled: true,
-                  fillColor: AppColors.inputFill,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
           actions: [
             TextButton(
@@ -686,30 +853,38 @@ class _StudentProfileViewState extends State<StudentProfileView> {
                         // Name & Active Badge
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            AutoSizeText(
-                              nameText,
-                              maxLines: 1,
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.textPrimary,
-                                letterSpacing: -0.4,
+                            Flexible(
+                              child: AutoSizeText(
+                                nameText,
+                                maxLines: 1,
+                                minFontSize: 14,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.textPrimary,
+                                  letterSpacing: -0.4,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE0F2FE),
+                                color: _isActiveStatus
+                                    ? const Color(0xFFE0F2FE)
+                                    : AppColors.error.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Text(
-                                'Active',
+                              child: Text(
+                                _status,
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
-                                  color: Color(0xFF0284C7),
+                                  color: _isActiveStatus
+                                      ? const Color(0xFF0284C7)
+                                      : AppColors.error,
                                 ),
                               ),
                             ),
@@ -821,14 +996,14 @@ class _StudentProfileViewState extends State<StudentProfileView> {
               _buildStatCard(
                 icon: LucideIcons.graduationCap,
                 iconColor: const Color(0xFF6366F1),
-                count: semText.isNotEmpty ? 1 : 0,
+                count: _education.length,
                 label: 'Education',
               ),
               const SizedBox(width: 10),
               _buildStatCard(
                 icon: LucideIcons.award,
                 iconColor: const Color(0xFFF59E0B),
-                count: 0,
+                count: _earnedCerts,
                 label: 'Certifications',
               ),
             ],
@@ -908,6 +1083,111 @@ class _StudentProfileViewState extends State<StudentProfileView> {
                 icon: LucideIcons.building,
                 enabled: _isEditing,
               ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // 3.5 EDUCATION CARD - backend education[] entries
+          _buildSectionCard(
+            eyebrow: 'ACADEMICS',
+            title: 'Education',
+            icon: LucideIcons.graduationCap,
+            iconColor: const Color(0xFF6366F1),
+            children: [
+              if (_education.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12.0),
+                  child: Center(
+                    child: Text(
+                      'No education added yet',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                ..._education.asMap().entries.map((entry) {
+                  final e = entry.value;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.inputFill.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  [e['degree'], e['fieldOfStudy']]
+                                      .where((x) => (x?.toString() ?? '').isNotEmpty)
+                                      .join(' · '),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                if ((e['institution'] ?? '').toString().isNotEmpty)
+                                  Text(
+                                    e['institution'].toString(),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _educationYearsText(e),
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_isEditing)
+                            IconButton(
+                              icon: const Icon(
+                                LucideIcons.trash2,
+                                size: 16,
+                                color: AppColors.error,
+                              ),
+                              onPressed: () => _removeEducation(entry.key),
+                              tooltip: 'Remove education',
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              if (_isEditing)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.border, width: 1.2),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                    onPressed: _showAddEducationDialog,
+                    icon: const Icon(LucideIcons.plus, size: 15, color: AppColors.primary),
+                    label: const Text(
+                      'Add education',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -1139,30 +1419,52 @@ class _StudentProfileViewState extends State<StudentProfileView> {
                     ),
                     const SizedBox(height: 16),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Finding 3 Fix: Functional Download / View Button
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.border),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppColors.border, width: 1.2),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
+                            ),
+                            onPressed: _openResume,
+                            icon: const Icon(LucideIcons.externalLink, size: 14, color: AppColors.primary),
+                            label: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'View / Download',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
                           ),
-                          onPressed: _openResume,
-                          icon: const Icon(LucideIcons.externalLink, size: 14, color: AppColors.primary),
-                          label: const Text('View / Download', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                         ),
                         const SizedBox(width: 10),
-                        // Finding 3 Fix: Functional File Upload Button
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0F172A),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0F172A),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
+                              elevation: 0,
+                            ),
+                            onPressed: () => _showResumeUploadDialog(context),
+                            icon: const Icon(LucideIcons.upload, size: 14, color: Colors.white),
+                            label: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'Replace / Upload',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
                           ),
-                          onPressed: () => _showResumeUploadDialog(context),
-                          icon: const Icon(LucideIcons.upload, size: 14, color: Colors.white),
-                          label: const Text('Replace / Upload', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Colors.white)),
                         ),
                       ],
                     ),
@@ -1185,7 +1487,7 @@ class _StudentProfileViewState extends State<StudentProfileView> {
   }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
@@ -1209,8 +1511,11 @@ class _StudentProfileViewState extends State<StudentProfileView> {
               ],
             ),
             const SizedBox(height: 2),
-            Text(
+            AutoSizeText(
               label,
+              maxLines: 1,
+              minFontSize: 8,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,

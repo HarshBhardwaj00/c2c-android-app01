@@ -19,13 +19,16 @@ class StudentProfileMenuPill extends StatelessWidget {
 
   const StudentProfileMenuPill({
     super.key,
-    this.userName = 'hh',
-    this.userEmail = 'harshbhara70@gmail.com',
-    this.avatarInitial = 'H',
+    this.userName = 'Student',
+    this.userEmail = 'student@c2c.org',
+    this.avatarInitial = 'S',
   });
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompact = screenWidth < 500;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -37,7 +40,10 @@ class StudentProfileMenuPill extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(24),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 6 : 10,
+            vertical: isCompact ? 4 : 5,
+          ),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(24),
@@ -58,12 +64,12 @@ class StudentProfileMenuPill extends StatelessWidget {
                 width: 28,
                 height: 28,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF2563EB), // Vibrant Blue matching Image
+                  color: Color(0xFF2563EB), // Vibrant Blue
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  avatarInitial.isNotEmpty ? avatarInitial[0].toUpperCase() : 'H',
+                  avatarInitial.isNotEmpty ? avatarInitial[0].toUpperCase() : 'S',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -71,28 +77,30 @@ class StudentProfileMenuPill extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-
-              // User Short Name
-              Flexible(
-                child: AutoSizeText(
-                  userName,
-                  maxLines: 1,
-                  minFontSize: 11,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.2,
+              if (!isCompact) ...[
+                const SizedBox(width: 6),
+                // User Short Name
+                Flexible(
+                  child: AutoSizeText(
+                    userName,
+                    maxLines: 1,
+                    minFontSize: 10,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.2,
+                    ),
                   ),
                 ),
-              ),
+              ],
               const SizedBox(width: 4),
 
               // Dropdown Chevron Icon
               const Icon(
                 LucideIcons.chevronDown,
-                size: 15,
+                size: 14,
                 color: AppColors.textSecondary,
               ),
             ],
@@ -106,9 +114,9 @@ class StudentProfileMenuPill extends StatelessWidget {
 /// Launcher function to present the Profile Dropdown Menu anchored below the top-right pill
 void showStudentProfileDropdown(
   BuildContext context, {
-  String userName = 'hh',
-  String userEmail = 'harshbhara70@gmail.com',
-  String avatarInitial = 'H',
+  String userName = 'Student',
+  String userEmail = 'student@c2c.org',
+  String avatarInitial = 'S',
 }) {
   HapticFeedback.lightImpact();
   showGeneralDialog(

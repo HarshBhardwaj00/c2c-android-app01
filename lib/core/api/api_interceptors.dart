@@ -9,10 +9,13 @@ class AuthInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
     final token = await storage.read(key: 'jwt_token');
-    if (token != null && token.isNotEmpty) {
+    if (token != null && token.isNotEmpty && token != 'null') {
       options.headers['Authorization'] = 'Bearer $token';
+    } else {
+      options.headers.remove('Authorization');
     }
     options.headers['Accept'] = 'application/json';
+    options.headers['ngrok-skip-browser-warning'] = '69420';
     handler.next(options);
   }
 

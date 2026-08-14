@@ -523,6 +523,7 @@ VERIFICATION URL: https://campus2corporate.org/verify/credential/$credentialId
           title: const AutoSizeText(
             'Certificates',
             maxLines: 1,
+            minFontSize: 13,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -532,12 +533,12 @@ VERIFICATION URL: https://campus2corporate.org/verify/credential/$credentialId
           ),
           actions: [
             IconButton(
-              icon: const Icon(LucideIcons.menu, size: 20, color: AppColors.primary),
+              icon: const Icon(LucideIcons.compass, size: 20, color: AppColors.primary),
               onPressed: () => showStudentNavPanel(context, activeRoute: '/student/certificates'),
               tooltip: 'Navigation Menu',
             ),
             const Padding(
-              padding: EdgeInsets.only(right: 12.0),
+              padding: EdgeInsets.only(right: 8.0),
               child: StudentProfileMenuPill(),
             ),
           ],
@@ -1042,40 +1043,50 @@ VERIFICATION URL: https://campus2corporate.org/verify/credential/$credentialId
           ),
           const SizedBox(height: 12),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Issued $issuedOn',
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textMuted,
+              Expanded(
+                child: Text(
+                  'Issued $issuedOn',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               if (credentialId.isNotEmpty)
-                GestureDetector(
-                  onTap: () => _showVerificationModal(cert),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.inputFill,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(LucideIcons.shieldCheck, size: 12, color: AppColors.primaryDark),
-                        const SizedBox(width: 4),
-                        Text(
-                          credentialId,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primaryDark,
+                Flexible(
+                  child: GestureDetector(
+                    onTap: () => _showVerificationModal(cert),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.inputFill,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(LucideIcons.shieldCheck, size: 12, color: AppColors.primaryDark),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              credentialId,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primaryDark,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

@@ -71,34 +71,34 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
       final notifPrefs = settings['notifications'] as Map<String, dynamic>? ?? const {};
       final privacyPrefs = settings['privacy'] as Map<String, dynamic>? ?? const {};
 
-      bool? readBool(Map<String, dynamic> source, Object? primary,
-          [Object? alias]) {
+      bool readBool(Map<String, dynamic> source, Object? primary,
+          [Object? alias, bool fallback = true]) {
         final value = source[primary];
         if (value is bool) return value;
         if (alias != null) {
           final alt = source[alias];
           if (alt is bool) return alt;
         }
-        return null;
+        return fallback;
       }
 
       setState(() {
         _notifications = List.from(notifs.isNotEmpty ? notifs : (widget.initialNotifications ?? []));
 
-        _assignmentUpdates = readBool(notifPrefs, 'assignments', 'assignmentUpdates');
-        _assessmentReminders = readBool(notifPrefs, 'assessments', 'assessmentReminders');
-        _mentorSessionAlerts = readBool(notifPrefs, 'mentorSessions', 'mentorSessionAlerts');
-        _interviewReminders = readBool(notifPrefs, 'interviews', 'interviewReminders');
-        _achievementsBadges = readBool(notifPrefs, 'achievements', 'achievementsBadges');
-        _emailNotifications = readBool(notifPrefs, 'email', 'emailNotifications');
-        _pushNotifications = readBool(notifPrefs, 'push', 'pushNotifications');
-        _smsAlerts = readBool(notifPrefs, 'sms', 'smsAlerts');
+        _assignmentUpdates = readBool(notifPrefs, 'assignments', 'assignmentUpdates', true);
+        _assessmentReminders = readBool(notifPrefs, 'assessments', 'assessmentReminders', true);
+        _mentorSessionAlerts = readBool(notifPrefs, 'mentorSessions', 'mentorSessionAlerts', true);
+        _interviewReminders = readBool(notifPrefs, 'interviews', 'interviewReminders', true);
+        _achievementsBadges = readBool(notifPrefs, 'achievements', 'achievementsBadges', true);
+        _emailNotifications = readBool(notifPrefs, 'email', 'emailNotifications', true);
+        _pushNotifications = readBool(notifPrefs, 'push', 'pushNotifications', true);
+        _smsAlerts = readBool(notifPrefs, 'sms', 'smsAlerts', false);
 
         _profileVisibleToRecruiters =
-            readBool(privacyPrefs, 'profileVisibleToRecruiters', 'recruiterVisible');
-        _showActivityStatus = readBool(privacyPrefs, 'showActivityStatus', 'leaderboard');
+            readBool(privacyPrefs, 'profileVisibleToRecruiters', 'recruiterVisible', true);
+        _showActivityStatus = readBool(privacyPrefs, 'showActivityStatus', 'leaderboard', true);
         _shareDataWithPlacementPartners =
-            readBool(privacyPrefs, 'shareDataWithPlacementPartners', 'shareDataWithPartners');
+            readBool(privacyPrefs, 'shareDataWithPlacementPartners', 'shareDataWithPartners', true);
 
         _isLoading = false;
       });
@@ -132,85 +132,108 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
       }
     });
 
-    final updated = await _apiService.markAllNotificationsAsRead();
-    if (updated != null && mounted) {
-      setState(() {
-        _notifications = List.from(updated);
-      });
+    // Best-effort sync with backend. The backend may not expose a dedicated
+    // notification endpoint, in which case the local (optimistic) state is kept.
+    try {
+      final updated = await _apiService.markAllNotificationsAsRead();
+      if (updated != null && mounted) {
+        setState(() {
+          _notifications = List.from(updated);
+        });
+      }
+    } catch (e) {
+      // Non-fatal: keep the optimistic local state so the UI never breaks.
+      assert(() {
+        debugPrint('markAllNotificationsAsRead error: $e');
+        return true;
+      }());
     }
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(LucideIcons.checkCheck, color: Colors.white, size: 18),
-              SizedBox(width: 10),
-              Text('All notifications marked as read', style: TextStyle(fontWeight: FontWeight.w600)),
-            ],
-          ),
-          backgroundColor: AppColors.success,
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(LucideIcons.checkCheck, color: Colors.white, size: 18),
+            SizedBox(width: 10),
+            Text('All notifications marked as read', style: TextStyle(fontWeight: FontWeight.w600)),
+          ],
         ),
-      );
-    }
+        backgroundColor: AppColors.success,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   Future<void> _markSingleAsRead(String id) async {
     HapticFeedback.selectionClick();
     final index = _notifications.indexWhere((n) => n['id'] == id);
-    if (index != -1) {
-      setState(() {
-        _notifications[index]['read'] = true;
-      });
+    if (index == -1) return;
+
+    setState(() {
+      _notifications[index]['read'] = true;
+    });
+
+    try {
       final updated = await _apiService.markNotificationAsRead(id);
       if (updated != null && mounted) {
         setState(() {
           _notifications = List.from(updated);
         });
       }
+    } catch (e) {
+      // Non-fatal: keep the optimistic local state so the UI never breaks.
+      assert(() {
+        debugPrint('markNotificationAsRead error: $e');
+        return true;
+      }());
     }
   }
 
   Future<void> _deleteNotification(String id) async {
     HapticFeedback.mediumImpact();
     final index = _notifications.indexWhere((n) => n['id'] == id);
-    if (index != -1) {
-      setState(() {
-        _notifications.removeAt(index);
-      });
+    if (index == -1) return;
 
+    setState(() {
+      _notifications.removeAt(index);
+    });
+
+    try {
       final updated = await _apiService.deleteNotification(id);
       if (updated != null && mounted) {
         setState(() {
           _notifications = List.from(updated);
         });
-      } else if (updated == null && mounted) {
-        // Optimistic delete state kept, or fallback
       }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(LucideIcons.trash2, color: Colors.white, size: 18),
-                SizedBox(width: 10),
-                Text('Notification deleted from database', style: TextStyle(fontWeight: FontWeight.w600)),
-              ],
-            ),
-            backgroundColor: AppColors.cardDark,
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
+    } catch (e) {
+      // Non-fatal: removal is already reflected locally.
+      assert(() {
+        debugPrint('deleteNotification error: $e');
+        return true;
+      }());
     }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(LucideIcons.trash2, color: Colors.white, size: 18),
+            SizedBox(width: 10),
+            Text('Notification removed', style: TextStyle(fontWeight: FontWeight.w600)),
+          ],
+        ),
+        backgroundColor: AppColors.cardDark,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   bool _prefsSaving = false;

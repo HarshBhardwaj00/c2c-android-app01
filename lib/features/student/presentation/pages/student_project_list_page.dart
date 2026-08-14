@@ -186,10 +186,11 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
             tooltip: 'Back to Dashboard',
           ),
           title: const AutoSizeText(
-            'Browse Project Listings',
+            'Browse Projects',
             maxLines: 1,
+            minFontSize: 13,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 17,
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
               letterSpacing: -0.3,
@@ -197,12 +198,12 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(LucideIcons.menu, size: 20, color: AppColors.primary),
+              icon: const Icon(LucideIcons.compass, size: 20, color: AppColors.primary),
               onPressed: () => showStudentNavPanel(context, activeRoute: '/student/projects'),
               tooltip: 'Navigation Menu',
             ),
             const Padding(
-              padding: EdgeInsets.only(right: 12.0),
+              padding: EdgeInsets.only(right: 8.0),
               child: StudentProfileMenuPill(),
             ),
           ],
@@ -229,7 +230,7 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
                   _buildHeroHeaderCard(),
                   const SizedBox(height: 16),
 
-                  // 2. METRICS STAT CARDS (Figma Component 2)
+                  // 2. METRICS STAT CARDS (Figma Component 2 - Overflow-Free)
                   _buildMetricsRow(_allProjects.length, _categories.length - 1),
                   const SizedBox(height: 16),
 
@@ -363,14 +364,14 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
     );
   }
 
-  /// 2. Metrics Stat Cards Row matching Figma Image 100%
+  /// 2. Metrics Stat Cards Row matching Figma Image 100% (Guaranteed Zero Overflow)
   Widget _buildMetricsRow(int openCount, int categoryCount) {
     return Row(
       children: [
-        // Open Projects Card (Figma Design Spec 100%)
+        // Open Projects Card
         Expanded(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(20),
@@ -387,26 +388,30 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(
+                    const Icon(
                       LucideIcons.barChart2,
-                      size: 18,
+                      size: 16,
                       color: AppColors.primary,
                     ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Open projects',
-                      style: TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.2,
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: AutoSizeText(
+                        'Open projects',
+                        maxLines: 1,
+                        minFontSize: 10,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.2,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -414,14 +419,14 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
                     Text(
                       '$openCount',
                       style: const TextStyle(
-                        fontSize: 32,
+                        fontSize: 28,
                         fontWeight: FontWeight.w900,
                         color: Color(0xFF0F172A),
                         letterSpacing: -1,
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.primaryLight,
                         borderRadius: BorderRadius.circular(16),
@@ -429,7 +434,7 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
                       child: const Text(
                         'Live',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: AppColors.primaryDark,
                         ),
@@ -437,11 +442,13 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 const Text(
                   'Active opportunities',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w500,
                     color: AppColors.textSecondary,
                   ),
@@ -450,12 +457,12 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
 
-        // Categories Card (Figma Matching Spec)
+        // Categories Card
         Expanded(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(20),
@@ -472,26 +479,30 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(
+                    const Icon(
                       LucideIcons.layoutGrid,
-                      size: 18,
+                      size: 16,
                       color: Color(0xFF2563EB),
                     ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Categories',
-                      style: TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.2,
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: AutoSizeText(
+                        'Categories',
+                        maxLines: 1,
+                        minFontSize: 10,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.2,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -499,7 +510,7 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
                     Text(
                       '$categoryCount',
                       style: const TextStyle(
-                        fontSize: 32,
+                        fontSize: 28,
                         fontWeight: FontWeight.w900,
                         color: Color(0xFF0F172A),
                         letterSpacing: -1,
@@ -514,7 +525,7 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
                       child: const Text(
                         'Tracks',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF2563EB),
                         ),
@@ -522,11 +533,13 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 const Text(
                   'Tech domains',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w500,
                     color: AppColors.textSecondary,
                   ),
@@ -829,7 +842,7 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
     final duration = (project['duration'] ?? '3 Months').toString();
     final location = (project['location'] ?? 'Remote').toString();
     final description = (project['description'] ?? '').toString();
-    final appliedCount = (project['appliedCount'] ?? 0).toString();
+    final appliedCount = (project['appliedCount'] as num?)?.toInt() ?? 0;
     final deadline = (project['deadline'] ?? '').toString();
     final techStack = (project['techStack'] is List)
         ? (project['techStack'] as List).cast<String>()
@@ -997,14 +1010,15 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '$appliedCount applicants',
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
+                    if (appliedCount > 0)
+                      Text(
+                        '$appliedCount applicants',
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
                     if (deadline.isNotEmpty)
                       Text(
                         deadline,

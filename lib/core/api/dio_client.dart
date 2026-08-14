@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../constants/api_endpoints.dart';
@@ -14,7 +13,11 @@ class DioClient {
         baseUrl: ApiEndpoints.baseUrl,
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
-        contentType: kIsWeb ? Headers.formUrlEncodedContentType : Headers.jsonContentType,
+        contentType: Headers.jsonContentType,
+        headers: const {
+          'Accept': 'application/json',
+          'ngrok-skip-browser-warning': '69420',
+        },
       ),
     );
 
@@ -25,7 +28,7 @@ class DioClient {
         responseHeader: false,
         requestBody: true,
         responseBody: true,
-        error: false,
+        error: true,
       ),
     );
   }
