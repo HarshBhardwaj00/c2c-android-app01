@@ -55,7 +55,7 @@ class _StudentDashboardPageContent extends StatelessWidget {
         return PopScope(
           canPop: true,
           child: Scaffold(
-            backgroundColor: AppColors.background,
+            backgroundColor: context.bg,
 
             // Top Header Bar
             body: SafeArea(
@@ -271,9 +271,9 @@ class _StudentDashboardPageContent extends StatelessWidget {
                 top: 20,
                 bottom: MediaQuery.of(modalContext).viewInsets.bottom + 20,
               ),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              decoration: BoxDecoration(
+                color: context.surf,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,15 +287,15 @@ class _StudentDashboardPageContent extends StatelessWidget {
                           'Search Portal & Features',
                           maxLines: 1,
                           minFontSize: 13,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
+                            color: context.txtPrimary,
                           ),
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(LucideIcons.x, size: 20, color: AppColors.textSecondary),
+                        icon: Icon(LucideIcons.x, size: 20, color: context.txtSecondary),
                         onPressed: () => Navigator.pop(modalContext),
                       ),
                     ],
@@ -309,31 +309,31 @@ class _StudentDashboardPageContent extends StatelessWidget {
                         context.push('/student/projects?search=${Uri.encodeComponent(query.trim())}');
                       }
                     },
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.txtPrimary),
                     decoration: InputDecoration(
                       hintText: 'Type to search projects, ATS resume, drives, settings...',
-                      hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-                      prefixIcon: const Icon(LucideIcons.search, size: 18, color: AppColors.textMuted),
+                      hintStyle: TextStyle(fontSize: 13, color: context.txtMuted),
+                      prefixIcon: Icon(LucideIcons.search, size: 18, color: context.txtMuted),
                       filled: true,
-                      fillColor: AppColors.inputFill,
+                      fillColor: context.surfAlt,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: context.brdr),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: context.brdr),
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Quick Feature Shortcuts',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textMuted,
+                      color: context.txtMuted,
                       letterSpacing: 0.6,
                     ),
                   ),
@@ -413,16 +413,16 @@ class _StudentDashboardPageContent extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: context.surfAlt,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.brdr),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.primaryLight,
+            color: context.priLight,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 18, color: AppColors.primary),
@@ -431,15 +431,15 @@ class _StudentDashboardPageContent extends StatelessWidget {
           title,
           maxLines: 1,
           minFontSize: 11,
-          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: context.txtPrimary),
         ),
         subtitle: AutoSizeText(
           subtitle,
           maxLines: 2,
           minFontSize: 10,
-          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 11, color: context.txtSecondary),
         ),
-        trailing: const Icon(LucideIcons.chevronRight, size: 16, color: AppColors.textMuted),
+        trailing: Icon(LucideIcons.chevronRight, size: 16, color: context.txtMuted),
         onTap: () {
           Navigator.pop(modalContext);
           context.push(route);

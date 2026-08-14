@@ -563,23 +563,23 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: context.bg,
         appBar: AppBar(
-          backgroundColor: AppColors.surface,
+          backgroundColor: context.surf,
           elevation: 0,
           scrolledUnderElevation: 0.5,
           leading: IconButton(
-            icon: const Icon(LucideIcons.arrowLeft, color: AppColors.textPrimary, size: 20),
+            icon: Icon(LucideIcons.arrowLeft, color: context.txtPrimary, size: 20),
             onPressed: _handleSafePop,
             tooltip: 'Back to Dashboard',
           ),
-          title: const AutoSizeText(
+          title: AutoSizeText(
             'Applied Projects',
             maxLines: 1,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: context.txtPrimary,
               letterSpacing: -0.3,
             ),
           ),
@@ -649,12 +649,12 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.surf,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.brdr),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.03),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -667,7 +667,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: AppColors.primaryLight,
+              color: context.priLight,
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Row(
@@ -680,7 +680,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primaryDark,
+                    color: AppColors.primary,
                   ),
                 ),
               ],
@@ -689,25 +689,25 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
           const SizedBox(height: 12),
 
           // Main Heading
-          const AutoSizeText(
+          AutoSizeText(
             'Applied Projects',
             maxLines: 1,
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
+              color: context.txtPrimary,
               letterSpacing: -0.4,
             ),
           ),
           const SizedBox(height: 8),
 
           // Subtitle Text
-          const Text(
+          Text(
             "Follow the status of every project you've applied to, from submission through offer.",
             style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
+              color: context.txtSecondary,
               height: 1.45,
             ),
           ),
@@ -726,12 +726,12 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.surf,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.brdr),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
+                color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.03),
                 blurRadius: 10,
                 offset: const Offset(0, 3),
               ),
@@ -748,7 +748,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                     size: 18,
                     color: AppColors.primary,
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: AutoSizeText(
                       'Applications',
@@ -756,7 +756,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        color: context.txtPrimary,
                         letterSpacing: -0.2,
                       ),
                     ),
@@ -772,10 +772,10 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                     child: AutoSizeText(
                       '$totalSubmitted',
                       maxLines: 1,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.cardDark,
+                        color: context.txtPrimary,
                         letterSpacing: -1,
                       ),
                     ),
@@ -783,7 +783,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryLight,
+                      color: context.priLight,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Text(
@@ -791,20 +791,20 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.primaryDark,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              const AutoSizeText(
+              AutoSizeText(
                 'Total submitted',
                 maxLines: 1,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
+                  color: context.txtSecondary,
                 ),
               ),
             ],
@@ -820,12 +820,12 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: context.surf,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: context.brdr),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
+                      color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.02),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -845,7 +845,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                           child: const Icon(LucideIcons.send, size: 15, color: Color(0xFF2563EB)),
                         ),
                         const SizedBox(width: 6),
-                        const Expanded(
+                        Expanded(
                           child: AutoSizeText(
                             'Submitted',
                             maxLines: 1,
@@ -853,7 +853,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                              color: context.txtPrimary,
                             ),
                           ),
                         ),
@@ -863,10 +863,10 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                     AutoSizeText(
                       '$submittedCount',
                       maxLines: 1,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.cardDark,
+                        color: context.txtPrimary,
                       ),
                     ),
                   ],
@@ -880,12 +880,12 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: context.surf,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: context.brdr),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
+                      color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.02),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -905,7 +905,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                           child: const Icon(LucideIcons.dollarSign, size: 15, color: Color(0xFFD97706)),
                         ),
                         const SizedBox(width: 6),
-                        const Expanded(
+                        Expanded(
                           child: AutoSizeText(
                             'Graded',
                             maxLines: 1,
@@ -913,7 +913,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                              color: context.txtPrimary,
                             ),
                           ),
                         ),
@@ -923,10 +923,10 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                     AutoSizeText(
                       '$gradedCount',
                       maxLines: 1,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.cardDark,
+                        color: context.txtPrimary,
                       ),
                     ),
                   ],
@@ -944,9 +944,9 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
     return Container(
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.surf,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.brdr),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -1234,9 +1234,9 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.surf,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.brdr),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1250,10 +1250,10 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                   company,
                   maxLines: 1,
                   minFontSize: 10,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary,
+                    color: context.txtSecondary,
                   ),
                 ),
               ),
@@ -1283,10 +1283,10 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
             title,
             maxLines: 2,
             minFontSize: 13,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15.5,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: context.txtPrimary,
               letterSpacing: -0.2,
               height: 1.25,
             ),
@@ -1321,14 +1321,14 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(LucideIcons.mapPin, size: 13, color: AppColors.textMuted),
+                    Icon(LucideIcons.mapPin, size: 13, color: context.txtMuted),
                     const SizedBox(width: 3),
                     Text(
                       location,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: context.txtSecondary,
                       ),
                     ),
                   ],
@@ -1338,14 +1338,14 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(LucideIcons.calendar, size: 13, color: AppColors.textMuted),
+                  Icon(LucideIcons.calendar, size: 13, color: context.txtMuted),
                   const SizedBox(width: 3),
                   Text(
                     appliedOn.isNotEmpty ? appliedOn : 'Recently',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
+                      color: context.txtMuted,
                     ),
                   ),
                 ],
@@ -1363,15 +1363,15 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppColors.inputFill,
+                    color: context.surfAlt,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     skill,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: context.txtPrimary,
                     ),
                   ),
                 );
@@ -1380,7 +1380,7 @@ class _StudentAppliedProjectsPageState extends State<StudentAppliedProjectsPage>
             const SizedBox(height: 12),
           ],
 
-          Divider(height: 1, color: AppColors.border.withValues(alpha: 0.6)),
+          Divider(height: 1, color: context.brdr.withValues(alpha: 0.6)),
           const SizedBox(height: 10),
 
           // Card Action Buttons Footer

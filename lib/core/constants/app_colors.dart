@@ -75,3 +75,17 @@ class AppColDark {
   static const Color textMuted = Color(0xFF64748B); // Muted Grey
   static const Color textOnPrimary = Color(0xFFFFFFFF);
 }
+
+/// Dynamic theme-aware helper extension on [BuildContext]
+extension ThemeColorsExtension on BuildContext {
+  bool get isDark => Theme.of(this).brightness == Brightness.dark;
+  Color get bg => isDark ? AppColDark.background : AppColors.background;
+  Color get surf => isDark ? AppColDark.surface : AppColors.surface;
+  Color get surfAlt => isDark ? AppColDark.surfaceAlt : AppColors.inputFill;
+  Color get txtPrimary => isDark ? AppColDark.textPrimary : AppColors.textPrimary;
+  Color get txtSecondary => isDark ? AppColDark.textSecondary : AppColors.textSecondary;
+  Color get txtMuted => isDark ? AppColDark.textMuted : AppColors.textMuted;
+  Color get brdr => isDark ? AppColDark.border : AppColors.border;
+  Color get priLight => isDark ? const Color(0xFF28254E) : AppColors.primaryLight;
+  Color get aiBadgeBgColor => isDark ? const Color(0xFF2D1B4E) : AppColors.aiBadgeBg;
+}

@@ -45,12 +45,12 @@ class StudentProfileMenuPill extends StatelessWidget {
             vertical: isCompact ? 4 : 5,
           ),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.surf,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.brdr),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: Colors.black.withValues(alpha: context.isDark ? 0.2 : 0.04),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -86,23 +86,20 @@ class StudentProfileMenuPill extends StatelessWidget {
                     maxLines: 1,
                     minFontSize: 10,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.2,
+                      color: context.txtPrimary,
                     ),
                   ),
                 ),
+                const SizedBox(width: 2),
+                Icon(
+                  LucideIcons.chevronDown,
+                  size: 14,
+                  color: context.txtSecondary,
+                ),
               ],
-              const SizedBox(width: 4),
-
-              // Dropdown Chevron Icon
-              const Icon(
-                LucideIcons.chevronDown,
-                size: 14,
-                color: AppColors.textSecondary,
-              ),
             ],
           ),
         ),
@@ -123,7 +120,7 @@ void showStudentProfileDropdown(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Dismiss Profile Menu',
-    barrierColor: Colors.black.withValues(alpha: 0.25),
+    barrierColor: Colors.black.withValues(alpha: context.isDark ? 0.5 : 0.25),
     transitionDuration: const Duration(milliseconds: 200),
     pageBuilder: (context, animation, secondaryAnimation) {
       return SafeArea(
@@ -179,17 +176,17 @@ class _ProfileDropdownMenuCard extends StatelessWidget {
       width: cardWidth,
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.surf,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
+            color: Colors.black.withValues(alpha: context.isDark ? 0.35 : 0.12),
             blurRadius: 20,
             spreadRadius: 1,
             offset: const Offset(0, 8),
           ),
         ],
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.brdr),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -205,10 +202,10 @@ class _ProfileDropdownMenuCard extends StatelessWidget {
                   userName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+                    color: context.txtPrimary,
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -217,17 +214,17 @@ class _ProfileDropdownMenuCard extends StatelessWidget {
                   userEmail,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
+                    color: context.txtSecondary,
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 10),
-          Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.brdr),
           const SizedBox(height: 8),
 
           // 2. The 4 Screen Router Items
@@ -337,16 +334,16 @@ class _ProfileDropdownMenuCard extends StatelessWidget {
               Icon(
                 icon,
                 size: 18,
-                color: const Color(0xFF475569),
+                color: context.txtSecondary,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF334155),
+                    fontWeight: FontWeight.w600,
+                    color: context.txtPrimary,
                   ),
                 ),
               ),

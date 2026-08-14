@@ -175,24 +175,24 @@ class _StudentProjectListPageState extends State<StudentProjectListPage> {
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: context.bg,
         appBar: AppBar(
-          backgroundColor: AppColors.surface,
+          backgroundColor: context.surf,
           elevation: 0,
           scrolledUnderElevation: 0.5,
           leading: IconButton(
-            icon: const Icon(LucideIcons.arrowLeft, color: AppColors.textPrimary, size: 20),
+            icon: Icon(LucideIcons.arrowLeft, color: context.txtPrimary, size: 20),
             onPressed: _handleSafePop,
             tooltip: 'Back to Dashboard',
           ),
-          title: const AutoSizeText(
+          title: AutoSizeText(
             'Browse Projects',
             maxLines: 1,
             minFontSize: 13,
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: context.txtPrimary,
               letterSpacing: -0.3,
             ),
           ),

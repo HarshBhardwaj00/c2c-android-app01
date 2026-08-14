@@ -19,6 +19,12 @@ class ThemeController extends ChangeNotifier {
 
   String get modeKey => _modeKeyFor(_mode);
 
+  bool get isDark {
+    if (_mode == ThemeMode.dark) return true;
+    if (_mode == ThemeMode.light) return false;
+    return WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
+  }
+
   /// Restores the persisted theme mode. Safe to call once at startup.
   Future<void> load() async {
     try {

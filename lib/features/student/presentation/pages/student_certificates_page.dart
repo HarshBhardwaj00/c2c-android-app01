@@ -5,6 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../data/student_api_service.dart';
@@ -41,6 +46,7 @@ class _StudentCertificatesPageState extends State<StudentCertificatesPage> {
   }
 
   Future<void> _fetchCertificates() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final data = await _apiService.getCertificates();
@@ -66,7 +72,7 @@ class _StudentCertificatesPageState extends State<StudentCertificatesPage> {
     }
   }
 
-  /// REAL Feature 1: Generates an actual PDF file on device disk and shows certificate preview/download
+  /// REAL Feature 1: Generates an actual vector PDF certificate and opens native Android Save / Print dialog
   Future<void> _downloadCertificatePdf(Map<String, dynamic> cert) async {
     HapticFeedback.mediumImpact();
     final title = (cert['title'] ?? 'Skill Credential').toString();
@@ -76,46 +82,277 @@ class _StudentCertificatesPageState extends State<StudentCertificatesPage> {
     final certHash = '0x${credentialId.hashCode.toRadixString(16).padLeft(8, '0')}${title.hashCode.toRadixString(16).padLeft(8, '0')}';
 
     try {
-      final tempDir = Directory.systemTemp;
-      final fileName = 'C2C_Certificate_${credentialId.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}.pdf';
-      final file = File('${tempDir.path}/$fileName');
+      final pdfDoc = pw.Document();
+      final primaryColor = PdfColor.fromHex('#4F46E5');
+      final slateDark = PdfColor.fromHex('#0F172A');
+      final goldColor = PdfColor.fromHex('#D97706');
 
-      final pdfContent = '''
-================================================================================
-                       CAMPUS2CORPORATE ACADEMY
-                  OFFICIAL VERIFIED SKILL CERTIFICATE
-================================================================================
+      pdfDoc.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.all(32),
+          build: (pw.Context pdfCtx) {
+            return pw.Container(
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: primaryColor, width: 4),
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
+              ),
+              padding: const pw.EdgeInsets.all(28),
+              child: pw.Column(
+                mainAxisAlignment: pw.MainAxisAlignment.center,
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Text(
+                    'CAMPUS2CORPORATE ACADEMY',
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      fontWeight: pw.FontWeight.bold,
+                      color: primaryColor,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Text(
+                    'OFFICIAL VERIFIED SKILL CERTIFICATE',
+                    style: pw.TextStyle(
+                      fontSize: 22,
+                      fontWeight: pw.FontWeight.bold,
+                      color: slateDark,
+                    ),
+                  ),
+                  pw.SizedBox(height: 12),
+                  pw.Text(
+                    'This is to proudly certify that the student candidate has successfully earned the credential:',
+                    style: pw.TextStyle(fontSize: 11, color: PdfColors.grey700),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                  pw.SizedBox(height: 16),
+                  pw.Text(
+                    title,
+                    style: pw.TextStyle(
+                      fontSize: 20,
+                      fontWeight: pw.FontWeight.bold,
+                      color: primaryColor,
+                    ),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                  pw.SizedBox(height: 16),
+                  pw.Divider(color: PdfColors.grey300),
+                  pw.SizedBox(height: 12),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('Issued By: $issuer', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                          pw.SizedBox(height: 4),
+                          pw.Text('Date of Issue: $issuedOn', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+                        ],
+                      ),
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.end,
+                        children: [
+                          pw.Text('Credential ID: $credentialId', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: goldColor)),
+                          pw.SizedBox(height: 4),
+                          pw.Text('Verification Hash: $certHash', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 16),
+                  pw.Text(
+                    'VERIFIED & AUTHENTICATED ON C2C PUBLIC CREDENTIAL REGISTRY\nhttps://campus2corporate.org/verify/credential/$credentialId',
+                    style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
 
-THIS IS TO CERTIFY THAT THE CANDIDATE HAS SUCCESSFULLY EARNED:
+      final pdfBytes = await pdfDoc.save();
+      final cleanFileName = 'C2C_Certificate_${credentialId.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}.pdf';
 
-CREDENTIAL TITLE: $title
-ISSUING AUTHORITY: $issuer
-CREDENTIAL ID: $credentialId
-ISSUE DATE: $issuedOn
-VERIFICATION HASH: $certHash
-
-STATUS: VERIFIED & AUTHENTICATED ON C2C PUBLIC CREDENTIAL REGISTRY
-VERIFICATION URL: https://campus2corporate.org/verify/credential/$credentialId
-
-================================================================================
-                     Campus2Corporate Accreditation Council
-================================================================================
-''';
-
-      await file.writeAsString(pdfContent);
+      // 1. Save locally to device storage
+      File? savedFile;
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/$cleanFileName');
+        await file.writeAsBytes(pdfBytes, flush: true);
+        savedFile = file;
+      } catch (_) {
+        try {
+          final tempDir = await getTemporaryDirectory();
+          final file = File('${tempDir.path}/$cleanFileName');
+          await file.writeAsBytes(pdfBytes, flush: true);
+          savedFile = file;
+        } catch (_) {}
+      }
 
       if (!mounted) return;
 
-      // Launch file URI or show Certificate Preview Modal
-      final Uri fileUri = Uri.file(file.path);
-      bool launched = false;
-      if (await canLaunchUrl(fileUri)) {
-        launched = await launchUrl(fileUri);
-      }
+      // 2. Show floating snackbar notification
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Certificate PDF downloaded! ($cleanFileName)'),
+          backgroundColor: const Color(0xFF16A34A),
+          behavior: SnackBarBehavior.floating,
+          action: savedFile != null
+              ? SnackBarAction(
+                  label: 'OPEN',
+                  textColor: Colors.white,
+                  onPressed: () => OpenFilex.open(savedFile!.path),
+                )
+              : null,
+        ),
+      );
 
-      if (!launched && mounted) {
-        _showCertificateDocumentModal(cert, file.path, pdfContent);
-      }
+      // 3. Show instant action modal
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (modalCtx) => Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: context.surf,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(color: context.brdr),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: context.priLight,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(LucideIcons.award, color: AppColors.primary, size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Certificate Downloaded!',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: context.txtPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            color: context.txtSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Divider(height: 1, color: context.brdr),
+              const SizedBox(height: 14),
+
+              // Option 1: Open PDF
+              if (savedFile != null)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(LucideIcons.eye, color: Color(0xFF2563EB), size: 20),
+                  ),
+                  title: Text(
+                    'Open Certificate File',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: context.txtPrimary),
+                  ),
+                  subtitle: Text(
+                    'View in your device PDF reader',
+                    style: TextStyle(fontSize: 12, color: context.txtSecondary),
+                  ),
+                  trailing: const Icon(LucideIcons.chevronRight, size: 16),
+                  onTap: () async {
+                    Navigator.pop(modalCtx);
+                    await OpenFilex.open(savedFile!.path);
+                  },
+                ),
+
+              // Option 2: Share / Save to Drive / WhatsApp / Files
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(LucideIcons.share2, color: Color(0xFF16A34A), size: 20),
+                ),
+                title: Text(
+                  'Share / Save to Files',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: context.txtPrimary),
+                ),
+                subtitle: Text(
+                  'Save to Drive, WhatsApp, or File Manager',
+                  style: TextStyle(fontSize: 12, color: context.txtSecondary),
+                ),
+                trailing: const Icon(LucideIcons.chevronRight, size: 16),
+                onTap: () async {
+                  Navigator.pop(modalCtx);
+                  await Printing.sharePdf(bytes: pdfBytes, filename: cleanFileName);
+                },
+              ),
+
+              // Option 3: System Print / Spooler
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF5FF),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(LucideIcons.printer, color: Color(0xFF9333EA), size: 20),
+                ),
+                title: Text(
+                  'Print / System Dialog',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: context.txtPrimary),
+                ),
+                subtitle: Text(
+                  'Open Android system print manager',
+                  style: TextStyle(fontSize: 12, color: context.txtSecondary),
+                ),
+                trailing: const Icon(LucideIcons.chevronRight, size: 16),
+                onTap: () async {
+                  Navigator.pop(modalCtx);
+                  await Printing.layoutPdf(
+                    onLayout: (PdfPageFormat format) async => pdfBytes,
+                    name: cleanFileName,
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      );
     } catch (_) {
       if (!mounted) return;
       _showCertificateDocumentModal(cert, '', 'Official Verified Certificate: $title\nCredential ID: $credentialId\nIssuer: $issuer');
@@ -510,24 +747,24 @@ VERIFICATION URL: https://campus2corporate.org/verify/credential/$credentialId
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: context.bg,
         appBar: AppBar(
-          backgroundColor: AppColors.surface,
+          backgroundColor: context.surf,
           elevation: 0,
           scrolledUnderElevation: 0.5,
           leading: IconButton(
-            icon: const Icon(LucideIcons.arrowLeft, color: AppColors.textPrimary, size: 20),
+            icon: Icon(LucideIcons.arrowLeft, color: context.txtPrimary, size: 20),
             onPressed: _handleSafePop,
             tooltip: 'Back to Dashboard',
           ),
-          title: const AutoSizeText(
+          title: AutoSizeText(
             'Certificates',
             maxLines: 1,
             minFontSize: 13,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: context.txtPrimary,
               letterSpacing: -0.3,
             ),
           ),

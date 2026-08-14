@@ -338,31 +338,30 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: context.bg,
         appBar: AppBar(
-          backgroundColor: AppColors.surface,
+          backgroundColor: context.surf,
           elevation: 0,
           scrolledUnderElevation: 0,
           centerTitle: false,
           leading: IconButton(
-            icon: const Icon(
+            icon: Icon(
               LucideIcons.chevronLeft,
               size: 22,
-              color: AppColors.textPrimary,
+              color: context.txtPrimary,
             ),
-            tooltip: 'Back',
             onPressed: _handleSafePop,
           ),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(LucideIcons.bell, color: AppColors.primary, size: 20),
-              SizedBox(width: 8),
+              const Icon(LucideIcons.bell, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
               Text(
-                'Stay in the loop',
+                'Notifications',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
+                  color: context.txtPrimary,
                 ),
               ),
             ],

@@ -9,6 +9,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../data/student_api_service.dart';
 import '../widgets/resume_section_widgets.dart';
 import '../../../auth/presentation/widgets/bouncy_button.dart';
+import '../../utils/resume_pdf_generator.dart';
 
 class EducationEntryData {
   String id;
@@ -590,6 +591,64 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
     );
   }
 
+  bool _isExportingPdf = false;
+
+  Future<void> _exportAsPdf() async {
+    HapticFeedback.mediumImpact();
+    setState(() => _isExportingPdf = true);
+    try {
+      final expList = _experience.map((e) => {
+        'role': e.roleController.text.trim(),
+        'organization': e.organizationController.text.trim(),
+        'duration': e.durationController.text.trim(),
+        'bullets': e.bulletsController.text.trim(),
+      }).toList();
+
+      final eduList = _education.map((e) => {
+        'degree': e.degreeController.text.trim(),
+        'institution': e.institutionController.text.trim(),
+        'duration': e.durationController.text.trim(),
+        'gpa': e.gpaController.text.trim(),
+      }).toList();
+
+      final certList = _certifications.map((c) => {
+        'name': c.nameController.text.trim(),
+        'issuer': c.issuerController.text.trim(),
+        'date': c.dateController.text.trim(),
+      }).toList();
+
+      await ResumePdfGenerator.exportResumePdf(
+        context: context,
+        fullName: _fullNameController.text.trim(),
+        headline: _titleController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+        location: _locationController.text.trim(),
+        linkedin: _linkedinController.text.trim(),
+        github: _githubController.text.trim(),
+        summary: _summaryController.text.trim(),
+        skills: _skills,
+        experience: expList,
+        education: eduList,
+        certifications: certList,
+        template: _template,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not export PDF: ${e.toString()}'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isExportingPdf = false);
+      }
+    }
+  }
+
   void _showPreviewSheet() {
     HapticFeedback.lightImpact();
     showModalBottomSheet(
@@ -606,9 +665,9 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
           maxChildSize: 0.96,
           minChildSize: 0.5,
           builder: (sheetContext, scrollController) => Container(
-            decoration: const BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            decoration: BoxDecoration(
+              color: context.surf,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             padding: EdgeInsets.only(
               top: 16,
@@ -624,7 +683,7 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                     width: 36,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: AppColors.border,
+                      color: context.brdr,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -641,7 +700,7 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                           Container(
                             padding: const EdgeInsets.all(7),
                             decoration: BoxDecoration(
-                              color: AppColors.primaryLight,
+                              color: context.priLight,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(LucideIcons.fileText, size: 16, color: AppColors.primary),
@@ -652,10 +711,10 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                               'Resume Live Preview (${_template.toUpperCase()})',
                               maxLines: 1,
                               minFontSize: 11,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16.5,
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
+                                color: context.txtPrimary,
                                 letterSpacing: -0.2,
                               ),
                             ),
@@ -665,7 +724,7 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                     ),
                     const SizedBox(width: 6),
                     IconButton(
-                      icon: const Icon(LucideIcons.x, color: AppColors.textSecondary, size: 20),
+                      icon: Icon(LucideIcons.x, color: context.txtSecondary, size: 20),
                       onPressed: () => Navigator.pop(modalContext),
                       tooltip: 'Close Preview',
                       visualDensity: VisualDensity.compact,
@@ -673,7 +732,7 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Divider(height: 1, color: AppColors.border),
+                Divider(height: 1, color: context.brdr),
                 const SizedBox(height: 12),
 
                 // Scrollable Formatted Resume Body
@@ -690,35 +749,69 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                 ),
                 const SizedBox(height: 12),
 
-                // Action Button with Navigation Safety (Fixed bottom overlap)
-                BouncyButton(
-                  onPressed: () {
-                    _copyToClipboard();
-                    Navigator.pop(modalContext);
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(14),
+                // Dual Action Buttons: Download PDF & Copy Plain Text
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          _copyToClipboard();
+                          Navigator.pop(modalContext);
+                        },
+                        icon: const Icon(LucideIcons.copy, size: 15),
+                        label: const AutoSizeText(
+                          'Copy Text',
+                          maxLines: 1,
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          side: const BorderSide(color: AppColors.border),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
                     ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(LucideIcons.copy, size: 18, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text(
-                          'Copy Resume as Plain Text',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: BouncyButton(
+                        onPressed: () async {
+                          Navigator.pop(modalContext);
+                          await _exportAsPdf();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (_isExportingPdf)
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              else
+                                const Icon(LucideIcons.download, size: 16, color: Colors.white),
+                              const SizedBox(width: 6),
+                              const AutoSizeText(
+                                'Download / Print PDF',
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -738,7 +831,7 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
       canPop: true,
       onPopInvokedWithResult: (didPop, result) {},
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: context.bg,
         appBar: AppBar(
           elevation: 0,
           backgroundColor: AppColors.primary,
@@ -945,14 +1038,18 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                       ),
                       const SizedBox(height: 24),
 
-                      // Bottom Actions
+                      // Bottom Actions (PDF Download, Live Preview & Copy Text)
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: _copyToClipboard,
-                              icon: const Icon(LucideIcons.copy, size: 16),
-                              label: const Text('Copy Plain Text'),
+                              icon: const Icon(LucideIcons.copy, size: 15),
+                              label: const AutoSizeText(
+                                'Copy Text',
+                                maxLines: 1,
+                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                                 side: const BorderSide(color: AppColors.border),
@@ -960,17 +1057,62 @@ ${_certifications.map((c) => "${c.nameController.text} — ${c.issuerController.
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
                           Expanded(
-                            child: ElevatedButton.icon(
+                            child: OutlinedButton.icon(
                               onPressed: _showPreviewSheet,
-                              icon: const Icon(LucideIcons.fileText, size: 16),
-                              label: const Text('Preview Resume'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
+                              icon: const Icon(LucideIcons.eye, size: 15, color: AppColors.primary),
+                              label: const AutoSizeText(
+                                'Live Preview',
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 14),
+                                side: const BorderSide(color: AppColors.primaryLight),
+                                backgroundColor: AppColors.primaryLight.withValues(alpha: 0.3),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 2,
+                            child: BouncyButton(
+                              onPressed: _exportAsPdf,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    if (_isExportingPdf)
+                                      const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    else
+                                      const Icon(LucideIcons.download, size: 16, color: Colors.white),
+                                    const SizedBox(width: 6),
+                                    const AutoSizeText(
+                                      'Download PDF',
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),

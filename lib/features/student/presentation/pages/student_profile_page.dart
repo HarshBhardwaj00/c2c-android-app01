@@ -33,21 +33,21 @@ class StudentProfilePage extends StatelessWidget {
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: context.bg,
         appBar: AppBar(
-          backgroundColor: AppColors.surface,
+          backgroundColor: context.surf,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(LucideIcons.arrowLeft, color: AppColors.textPrimary, size: 20),
+            icon: Icon(LucideIcons.arrowLeft, color: context.txtPrimary, size: 20),
             onPressed: () => _handleSafePop(context),
             tooltip: 'Back to Dashboard',
           ),
-          title: const Text(
+          title: Text(
             'My Profile',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: context.txtPrimary,
               letterSpacing: -0.3,
             ),
           ),

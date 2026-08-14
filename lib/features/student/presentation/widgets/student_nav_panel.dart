@@ -109,18 +109,18 @@ class StudentNavPanel extends StatelessWidget {
         right: 14.0,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.surf,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
+            color: Colors.black.withValues(alpha: context.isDark ? 0.35 : 0.12),
             blurRadius: 24,
             spreadRadius: 2,
             offset: const Offset(0, 8),
           ),
         ],
         border: Border.all(
-          color: AppColors.border.withValues(alpha: 0.8),
+          color: context.brdr,
           width: 1,
         ),
       ),
@@ -146,19 +146,19 @@ class StudentNavPanel extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'Navigation',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+                    color: context.txtPrimary,
                     letterSpacing: -0.2,
                   ),
                 ),
               ],
             ),
           ),
-          Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: context.brdr),
           const SizedBox(height: 10),
 
           // Dynamic Navigation Items List
@@ -205,7 +205,7 @@ class StudentNavPanel extends StatelessWidget {
                                 size: 19,
                                 color: isSelected
                                     ? Colors.white
-                                    : const Color(0xFF475569),
+                                    : context.txtSecondary,
                               ),
                               const SizedBox(width: 14),
                               Expanded(
@@ -220,7 +220,7 @@ class StudentNavPanel extends StatelessWidget {
                                         : FontWeight.w600,
                                     color: isSelected
                                         ? Colors.white
-                                        : const Color(0xFF334155),
+                                        : context.txtPrimary,
                                     letterSpacing: -0.2,
                                   ),
                                 ),
