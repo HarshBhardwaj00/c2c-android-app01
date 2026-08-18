@@ -136,58 +136,117 @@ class AuthRepository {
   Future<AuthLoginResult> login({
     required String email,
     required String password,
-    String role = 'student',
+    String? role,
+  }) async {
+    final cleanEmail = email.trim().toLowerCase();
+
+    // If a specific role is explicitly provided and not 'auto', perform targeted login
+    if (role != null && role.isNotEmpty && role.toLowerCase() != 'auto') {
+      return _loginTargeted(
+        email: cleanEmail,
+        password: password,
+        role: role.toLowerCase(),
+      );
+    }
+
+    // Smart Auto-Detection Waterfall Login (Zero Backend Changes)
+    // Step 1: Attempt Student / General Auth Endpoint (/auth/login)
+    try {
+      return await _loginTargeted(
+        email: cleanEmail,
+        password: password,
+        role: 'student',
+      );
+    } on DioException catch (dioErr) {
+      if (_isNetworkConnectionError(dioErr)) {
+        throw Exception(_extractErrorMessage(dioErr));
+      }
+      // If 400/401/404, credentials were not found in student collection, proceed to college check
+    } catch (_) {}
+
+    // Step 2: Attempt College Auth Endpoint (/college/login)
+    try {
+      return await _loginTargeted(
+        email: cleanEmail,
+        password: password,
+        role: 'college',
+      );
+    } on DioException catch (dioErr) {
+      if (_isNetworkConnectionError(dioErr)) {
+        throw Exception(_extractErrorMessage(dioErr));
+      }
+      // If 400/401/404, credentials were not found in college collection, proceed to admin check
+    } catch (_) {}
+
+    // Step 3: Attempt Admin Auth Endpoint (/admin/login)
+    try {
+      return await _loginTargeted(
+        email: cleanEmail,
+        password: password,
+        role: 'admin',
+      );
+    } on DioException catch (dioErr) {
+      if (_isNetworkConnectionError(dioErr)) {
+        throw Exception(_extractErrorMessage(dioErr));
+      }
+    } catch (_) {}
+
+    // If none of the module endpoints matched
+    throw Exception('Invalid email or password. Please check your credentials or register for an account.');
+  }
+
+  bool _isNetworkConnectionError(DioException err) {
+    return err.type == DioExceptionType.connectionTimeout ||
+        err.type == DioExceptionType.connectionError ||
+        err.type == DioExceptionType.sendTimeout ||
+        err.type == DioExceptionType.receiveTimeout;
+  }
+
+  Future<AuthLoginResult> _loginTargeted({
+    required String email,
+    required String password,
+    required String role,
   }) async {
     final cleanRole = role.trim().toLowerCase();
+    String endpoint = ApiEndpoints.login;
+    final payload = <String, dynamic>{
+      'email': email,
+      'password': password,
+    };
 
-    try {
-      String endpoint = ApiEndpoints.login;
-      final payload = <String, dynamic>{
-        'email': email.trim().toLowerCase(),
-        'password': password,
-      };
-
-      if (cleanRole == 'admin') {
-        endpoint = ApiEndpoints.adminLogin;
-        payload['role'] = 'admin';
-      } else if (cleanRole == 'college') {
-        endpoint = ApiEndpoints.collegeLogin;
-      } else {
-        // Backend /auth/login requires role to be 'student' or omitted
-        payload['role'] = 'student';
-      }
-
-      final response = await _dioClient.instance.post(
-        endpoint,
-        data: payload,
-      );
-
-      final data = response.data is Map<String, dynamic>
-          ? response.data as Map<String, dynamic>
-          : <String, dynamic>{};
-      final dataMap = data['data'] is Map<String, dynamic>
-          ? data['data'] as Map<String, dynamic>
-          : <String, dynamic>{};
-
-      // Account has two-factor authentication enabled: finish login with a
-      // verification code before emitting an authenticated user.
-      if (dataMap['twoFactorRequired'] == true || data['twoFactorRequired'] == true) {
-        final pendingToken = (dataMap['pendingToken'] ?? data['pendingToken'])?.toString();
-        if (pendingToken != null && pendingToken.isNotEmpty) {
-          return AuthLoginResult(pendingTwoFactorToken: pendingToken);
-        }
-      }
-
-      final token = data['token']?.toString() ?? dataMap['token']?.toString() ?? '';
-      final authUser = AuthUser.fromJson(data, token, defaultRole: cleanRole);
-      await _persistUser(authUser);
-      return AuthLoginResult(user: authUser);
-    } on DioException catch (dioErr) {
-      final errorMsg = _extractErrorMessage(dioErr);
-      throw Exception(errorMsg);
-    } catch (e) {
-      throw Exception('Login failed: ${e.toString()}');
+    if (cleanRole == 'admin') {
+      endpoint = ApiEndpoints.adminLogin;
+      payload['role'] = 'admin';
+    } else if (cleanRole == 'college') {
+      endpoint = ApiEndpoints.collegeLogin;
+    } else {
+      payload['role'] = 'student';
     }
+
+    final response = await _dioClient.instance.post(
+      endpoint,
+      data: payload,
+    );
+
+    final data = response.data is Map<String, dynamic>
+        ? response.data as Map<String, dynamic>
+        : <String, dynamic>{};
+    final dataMap = data['data'] is Map<String, dynamic>
+        ? data['data'] as Map<String, dynamic>
+        : <String, dynamic>{};
+
+    // Account has two-factor authentication enabled
+    if (dataMap['twoFactorRequired'] == true || data['twoFactorRequired'] == true) {
+      final pendingToken = (dataMap['pendingToken'] ?? data['pendingToken'])?.toString();
+      if (pendingToken != null && pendingToken.isNotEmpty) {
+        return AuthLoginResult(pendingTwoFactorToken: pendingToken);
+      }
+    }
+
+    final token = data['token']?.toString() ?? dataMap['token']?.toString() ?? '';
+    final authUser = AuthUser.fromJson(data, token, defaultRole: cleanRole);
+    await _persistUser(authUser);
+    return AuthLoginResult(user: authUser);
   }
 
   /// Completes a two-factor-authenticated sign-in using an existing login

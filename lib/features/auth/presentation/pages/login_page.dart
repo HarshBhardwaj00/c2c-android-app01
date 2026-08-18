@@ -22,15 +22,6 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-  String _selectedRole = 'student';
-
-  final List<Map<String, dynamic>> _roles = [
-    {'id': 'student', 'label': 'Student', 'icon': LucideIcons.graduationCap, 'color': Color(0xFF7C3AED)},
-    {'id': 'mentor', 'label': 'Mentor', 'icon': LucideIcons.users, 'color': Color(0xFF10B981)},
-    {'id': 'college', 'label': 'College', 'icon': LucideIcons.building2, 'color': Color(0xFF2563EB)},
-    {'id': 'recruiter', 'label': 'Recruiter', 'icon': LucideIcons.briefcase, 'color': Color(0xFFEA580C)},
-    {'id': 'admin', 'label': 'Admin', 'icon': LucideIcons.shieldCheck, 'color': Color(0xFF64748B)},
-  ];
 
   @override
   void dispose() {
@@ -39,22 +30,15 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  Color get _activeRoleColor {
-    final match = _roles.firstWhere(
-      (r) => r['id'] == _selectedRole,
-      orElse: () => _roles.first,
-    );
-    return match['color'] as Color;
-  }
-
   void _onLogin() {
     if (!_formKey.currentState!.validate()) return;
+    HapticFeedback.lightImpact();
 
+    // Dispatches single login request with auto module & role detection in AuthRepository
     context.read<AuthBloc>().add(
           LoginRequested(
             _emailController.text.trim(),
             _passwordController.text,
-            role: _selectedRole,
           ),
         );
   }
@@ -67,6 +51,7 @@ class _LoginPageState extends State<LoginPage> {
         final controller = TextEditingController();
         return AlertDialog(
           backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           title: const Text(
             'Two-Factor Authentication',
             style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary),
@@ -93,16 +78,21 @@ class _LoginPageState extends State<LoginPage> {
                 decoration: InputDecoration(
                   hintText: '••••••',
                   counterText: '',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: AppColors.inputFill,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
               Row(
-                children: [
+                children: const [
                   Icon(LucideIcons.shieldCheck, size: 14, color: AppColors.success),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'Secret never leaves your app',
+                  SizedBox(width: 6),
+                  Text(
+                    'Encrypted & verified end-to-end',
                     style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),
                   ),
                 ],
@@ -115,7 +105,10 @@ class _LoginPageState extends State<LoginPage> {
               child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
               onPressed: () {
                 if (controller.text.trim().length == 6) {
                   Navigator.of(dialogContext).pop(controller.text.trim());
@@ -160,13 +153,22 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Reactivate Account',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Reactivate Account',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                    ),
+                    IconButton(
+                      icon: const Icon(LucideIcons.x, size: 20, color: AppColors.textMuted),
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 const Text(
-                  'Enter the email and password of your deactivated student account to bring it back.',
+                  'Enter the email and password of your deactivated account to bring it back.',
                   style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.35),
                 ),
                 const SizedBox(height: 18),
@@ -225,413 +227,338 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.sizeOf(context);
-    final horizontalPadding = screenSize.width * 0.05;
+    final horizontalPadding = (screenSize.width * 0.06).clamp(16.0, 32.0);
+    final bottomInset = MediaQuery.of(context).padding.bottom == 0 ? 16.0 : MediaQuery.of(context).padding.bottom;
 
     return PopScope(
       canPop: true,
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: BlocListener<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is Authenticated) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Welcome back, ${state.userName}!'),
-                backgroundColor: AppColors.success,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            );
+          listener: (context, state) {
+            if (state is Authenticated) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Welcome back, ${state.userName}!'),
+                  backgroundColor: AppColors.success,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
 
-            if (state.role == 'admin') {
-              context.go('/admin/dashboard');
-            } else if (state.role == 'college') {
-              context.go('/college/dashboard');
-            } else if (state.role == 'mentor') {
-              context.go('/mentor/dashboard');
-            } else if (state.role == 'recruiter') {
-              context.go('/recruiter/dashboard');
-            } else {
-              context.go('/student/dashboard');
+              // Auto-routes directly to matching module dashboard based on validated credentials
+              if (state.role == 'admin') {
+                context.go('/admin/dashboard');
+              } else if (state.role == 'college') {
+                context.go('/college/dashboard');
+              } else if (state.role == 'mentor') {
+                context.go('/mentor/dashboard');
+              } else if (state.role == 'recruiter') {
+                context.go('/recruiter/dashboard');
+              } else {
+                context.go('/student/dashboard');
+              }
+            } else if (state is TwoFactorRequired) {
+              _showTwoFactorDialog(state.pendingToken);
+            } else if (state is AuthError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
             }
-          } else if (state is TwoFactorRequired) {
-            _showTwoFactorDialog(state.pendingToken);
-          } else if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.error,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          },
+          child: SafeArea(
+            bottom: true,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.only(
+                top: 16.0,
+                bottom: bottomInset + 16.0,
+                left: horizontalPadding,
+                right: horizontalPadding,
               ),
-            );
-          }
-        },
-        child: SafeArea(
-          bottom: true,
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).padding.bottom == 0 ? 16.0 : MediaQuery.of(context).padding.bottom,
-              top: 16.0,
-              left: horizontalPadding.clamp(14.0, 28.0),
-              right: horizontalPadding.clamp(14.0, 28.0),
-            ),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 8),
-
-                  // Brand Header with Overflow Safety (Flexible & AutoSizeText)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _activeRoleColor.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          LucideIcons.network,
-                          color: _activeRoleColor,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: AutoSizeText(
-                          'Campus2Corporate',
-                          maxLines: 1,
-                          minFontSize: 16,
-                          maxFontSize: 24,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Header Title with ShaderMask
-                  ShaderMask(
-                    shaderCallback: (bounds) => LinearGradient(
-                      colors: [_activeRoleColor, AppColors.textPrimary],
-                    ).createShader(bounds),
-                    child: const AutoSizeText(
-                      'Welcome Back',
-                      maxLines: 1,
-                      minFontSize: 20,
-                      maxFontSize: 28,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Sign in to access your customized dashboard and tools.',
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      color: AppColors.textSecondary,
-                      height: 1.35,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Role Switcher Label & Demo Fill Action
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const AutoSizeText(
-                        'Select Portal Role',
-                        maxLines: 1,
-                        minFontSize: 12,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            _emailController.text = '$_selectedRole.demo@c2c.org';
-                            _passwordController.text = 'Password123!';
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Filled demo credentials for ${_selectedRole.toUpperCase()}'),
-                              duration: const Duration(seconds: 2),
-                              behavior: SnackBarBehavior.floating,
-                              backgroundColor: _activeRoleColor,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          child: Row(
-                            children: [
-                              Icon(LucideIcons.sparkles, size: 13, color: _activeRoleColor),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Fill Demo Credentials',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: _activeRoleColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Role Switcher Chips Container
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      children: _roles.map((r) {
-                        final isSelected = r['id'] == _selectedRole;
-                        final color = r['color'] as Color;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            showCheckmark: false,
-                            avatar: Icon(
-                              r['icon'] as IconData,
-                              size: 15,
-                              color: isSelected ? Colors.white : color,
-                            ),
-                            label: Text(
-                              r['label'] as String,
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                color: isSelected ? Colors.white : AppColors.textPrimary,
-                              ),
-                            ),
-                            selected: isSelected,
-                            selectedColor: color,
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top App Bar with Brand Identity & Back Navigation
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            if (Navigator.canPop(context)) {
+                              context.pop();
+                            } else {
+                              context.go('/auth/role-select');
+                            }
+                          },
+                          icon: const Icon(LucideIcons.arrowLeft, color: AppColors.textPrimary),
+                          style: IconButton.styleFrom(
                             backgroundColor: AppColors.surface,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: isSelected ? color : AppColors.border,
-                              ),
+                              side: const BorderSide(color: AppColors.border),
                             ),
-                            onSelected: (selected) {
-                              if (selected) {
-                                setState(() => _selectedRole = r['id'] as String);
-                              }
-                            },
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Email Address Field Label
-                  const AutoSizeText(
-                    'Email Address',
-                    maxLines: 1,
-                    minFontSize: 12,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) return 'Please enter your email';
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(val.trim())) {
-                        return 'Enter a valid email address';
-                      }
-                      return null;
-                    },
-                    decoration: const InputDecoration(
-                      hintText: 'name@domain.com',
-                      prefixIcon: Icon(LucideIcons.mail, size: 19, color: AppColors.textMuted),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  // Password Label & Forgot Password Row (Flexible Wrapped)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Flexible(
-                        child: AutoSizeText(
-                          'Password',
-                          maxLines: 1,
-                          minFontSize: 11,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
                           ),
                         ),
-                      ),
-                      Flexible(
-                        child: GestureDetector(
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text('Password reset link sent to your registered email.'),
-                                backgroundColor: AppColors.primary,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLight,
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                            );
-                          },
+                              child: const Icon(
+                                LucideIcons.network,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Campus2Corporate',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Header Title with ShaderMask
+                    ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [AppColors.textPrimary, AppColors.primary],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(bounds),
+                      child: const AutoSizeText(
+                        'Welcome Back',
+                        maxLines: 1,
+                        minFontSize: 22,
+                        maxFontSize: 30,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: -0.6,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Sign in with your registered credentials. We will automatically detect your portal and open your dashboard.',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+
+
+
+                    // Email Address Field
+                    const AutoSizeText(
+                      'Email Address',
+                      maxLines: 1,
+                      minFontSize: 12,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'Please enter your email address';
+                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(val.trim())) {
+                          return 'Enter a valid email address';
+                        }
+                        return null;
+                      },
+                      decoration: const InputDecoration(
+                        hintText: 'name@domain.com',
+                        prefixIcon: Icon(LucideIcons.mail, size: 19, color: AppColors.textMuted),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Password Label & Forgot Password Action
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Flexible(
                           child: AutoSizeText(
-                            'Forgot Password?',
+                            'Password',
                             maxLines: 1,
-                            minFontSize: 10,
-                            textAlign: TextAlign.end,
+                            minFontSize: 11,
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
-                              color: _activeRoleColor,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    validator: (val) => val == null || val.isEmpty ? 'Please enter password' : null,
-                    decoration: InputDecoration(
-                      hintText: '••••••••',
-                      prefixIcon: const Icon(LucideIcons.lock, size: 19, color: AppColors.textMuted),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? LucideIcons.eyeOff : LucideIcons.eye,
-                          size: 19,
-                          color: AppColors.textMuted,
-                        ),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Sign In Action Button
-                  BlocBuilder<AuthBloc, AuthState>(
-                    builder: (context, state) {
-                      final isLoading = state is AuthLoading;
-                      return SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: BouncyButton(
-                          onPressed: isLoading ? null : _onLogin,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: _activeRoleColor,
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _activeRoleColor.withValues(alpha: 0.28),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
+                        Flexible(
+                          child: GestureDetector(
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Password reset instructions sent to your registered email.'),
+                                  backgroundColor: AppColors.primary,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                 ),
-                              ],
-                            ),
-                            alignment: Alignment.center,
-                            child: isLoading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  )
-                                : const AutoSizeText(
-                                    'Sign In',
-                                    maxLines: 1,
-                                    minFontSize: 14,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                      letterSpacing: 0.3,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 22),
-
-                  // Don't have an account? Register Now Link (FittedBox Wrapped)
-                  Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            "Don't have an account? ",
-                            style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
-                          ),
-                          GestureDetector(
-                            onTap: () => context.push('/auth/role-select'),
-                            child: Text(
-                              'Register Now',
+                              );
+                            },
+                            child: const AutoSizeText(
+                              'Forgot Password?',
+                              maxLines: 1,
+                              minFontSize: 10,
+                              textAlign: TextAlign.end,
                               style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w800,
-                                color: _activeRoleColor,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
                               ),
                             ),
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      validator: (val) => val == null || val.isEmpty ? 'Please enter your password' : null,
+                      decoration: InputDecoration(
+                        hintText: '••••••••',
+                        prefixIcon: const Icon(LucideIcons.lock, size: 19, color: AppColors.textMuted),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? LucideIcons.eyeOff : LucideIcons.eye,
+                            size: 19,
+                            color: AppColors.textMuted,
+                          ),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 28),
 
-                  // Account deactivated? Reactivate link
-                  Center(
-                    child: TextButton.icon(
-                      onPressed: _showReactivateSheet,
-                      icon: const Icon(LucideIcons.rotateCcw, size: 15, color: AppColors.textMuted),
-                      label: const Text(
-                        'Account deactivated? Reactivate',
-                        style: TextStyle(fontSize: 12.5, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                    // Sign In Action Button
+                    BlocBuilder<AuthBloc, AuthState>(
+                      builder: (context, state) {
+                        final isLoading = state is AuthLoading;
+                        return SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: BouncyButton(
+                            onPressed: isLoading ? null : _onLogin,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.32),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              alignment: Alignment.center,
+                              child: isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                  : const AutoSizeText(
+                                      'Sign In to Dashboard',
+                                      maxLines: 1,
+                                      minFontSize: 14,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Don't have an account? Register Now Link
+                    Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              "Don't have an account? ",
+                              style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+                            ),
+                            GestureDetector(
+                              onTap: () => context.push('/auth/role-select'),
+                              child: const Text(
+                                'Register Now',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 18),
+
+                    // Reactivate Deactivated Account Link
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: _showReactivateSheet,
+                        icon: const Icon(LucideIcons.rotateCcw, size: 14, color: AppColors.textMuted),
+                        label: const Text(
+                          'Account deactivated? Reactivate',
+                          style: TextStyle(fontSize: 12.5, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

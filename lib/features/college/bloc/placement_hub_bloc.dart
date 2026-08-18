@@ -24,6 +24,25 @@ class ChangeTabEvent extends PlacementHubEvent {
   ChangeTabEvent(this.tab);
 }
 
+class CreateDriveEvent extends PlacementHubEvent {
+  final Map<String, dynamic> driveData;
+
+  CreateDriveEvent(this.driveData);
+}
+
+class UpdateDriveEvent extends PlacementHubEvent {
+  final String driveId;
+  final Map<String, dynamic> driveData;
+
+  UpdateDriveEvent({required this.driveId, required this.driveData});
+}
+
+class DeleteDriveEvent extends PlacementHubEvent {
+  final String driveId;
+
+  DeleteDriveEvent(this.driveId);
+}
+
 class AssignRecruiterEvent extends PlacementHubEvent {
   final String coordinatorName;
   final String driveCycle;
@@ -48,6 +67,7 @@ class PlacementHubLoaded extends PlacementHubState {
   final String searchQuery;
   final String selectedTab;
   final bool isSubmitting;
+  final String? successMessage;
 
   PlacementHubLoaded({
     required this.drives,
@@ -56,6 +76,7 @@ class PlacementHubLoaded extends PlacementHubState {
     required this.searchQuery,
     required this.selectedTab,
     this.isSubmitting = false,
+    this.successMessage,
   });
 
   PlacementHubLoaded copyWith({
@@ -65,6 +86,7 @@ class PlacementHubLoaded extends PlacementHubState {
     String? searchQuery,
     String? selectedTab,
     bool? isSubmitting,
+    String? successMessage,
   }) {
     return PlacementHubLoaded(
       drives: drives ?? this.drives,
@@ -73,6 +95,7 @@ class PlacementHubLoaded extends PlacementHubState {
       searchQuery: searchQuery ?? this.searchQuery,
       selectedTab: selectedTab ?? this.selectedTab,
       isSubmitting: isSubmitting ?? this.isSubmitting,
+      successMessage: successMessage,
     );
   }
 }
@@ -92,6 +115,9 @@ class PlacementHubBloc extends Bloc<PlacementHubEvent, PlacementHubState> {
         super(PlacementHubInitial()) {
     on<FetchDrivesEvent>(_onFetchDrives);
     on<ChangeTabEvent>(_onChangeTab);
+    on<CreateDriveEvent>(_onCreateDrive);
+    on<UpdateDriveEvent>(_onUpdateDrive);
+    on<DeleteDriveEvent>(_onDeleteDrive);
     on<AssignRecruiterEvent>(_onAssignRecruiter);
   }
 
@@ -115,7 +141,7 @@ class PlacementHubBloc extends Bloc<PlacementHubEvent, PlacementHubState> {
         selectedTab: event.selectedTab,
       ));
     } catch (e) {
-      emit(PlacementHubError(message: 'Failed to load Placement Hub data.'));
+      emit(PlacementHubError(message: 'Failed to load Placement Hub data from database.'));
     }
   }
 
@@ -134,6 +160,80 @@ class PlacementHubBloc extends Bloc<PlacementHubEvent, PlacementHubState> {
     }
   }
 
+  Future<void> _onCreateDrive(
+    CreateDriveEvent event,
+    Emitter<PlacementHubState> emit,
+  ) async {
+    if (state is PlacementHubLoaded) {
+      final currentState = state as PlacementHubLoaded;
+      emit(currentState.copyWith(isSubmitting: true));
+      try {
+        await _apiService.createPlacementDrive(event.driveData);
+        final drives = await _apiService.fetchPlacementDrives(
+          query: currentState.searchQuery,
+          status: currentState.selectedStatus,
+        );
+        final dashData = await _apiService.fetchDashboardData(tab: currentState.selectedTab);
+        emit(currentState.copyWith(
+          drives: drives,
+          dashboardData: dashData,
+          isSubmitting: false,
+          successMessage: 'Placement drive scheduled in database successfully!',
+        ));
+      } catch (e) {
+        emit(PlacementHubError(message: e.toString().replaceAll('Exception: ', '')));
+      }
+    }
+  }
+
+  Future<void> _onUpdateDrive(
+    UpdateDriveEvent event,
+    Emitter<PlacementHubState> emit,
+  ) async {
+    if (state is PlacementHubLoaded) {
+      final currentState = state as PlacementHubLoaded;
+      emit(currentState.copyWith(isSubmitting: true));
+      try {
+        await _apiService.updatePlacementDrive(event.driveId, event.driveData);
+        final drives = await _apiService.fetchPlacementDrives(
+          query: currentState.searchQuery,
+          status: currentState.selectedStatus,
+        );
+        emit(currentState.copyWith(
+          drives: drives,
+          isSubmitting: false,
+          successMessage: 'Placement drive updated in database successfully!',
+        ));
+      } catch (e) {
+        emit(PlacementHubError(message: e.toString().replaceAll('Exception: ', '')));
+      }
+    }
+  }
+
+  Future<void> _onDeleteDrive(
+    DeleteDriveEvent event,
+    Emitter<PlacementHubState> emit,
+  ) async {
+    if (state is PlacementHubLoaded) {
+      final currentState = state as PlacementHubLoaded;
+      emit(currentState.copyWith(isSubmitting: true));
+      try {
+        await _apiService.deletePlacementDrive(event.driveId);
+        final drives = await _apiService.fetchPlacementDrives(
+          query: currentState.searchQuery,
+          status: currentState.selectedStatus,
+        );
+        emit(currentState.copyWith(
+          drives: drives,
+          isSubmitting: false,
+          successMessage: 'Placement drive deleted from database.',
+        ));
+      } catch (e) {
+        emit(PlacementHubError(message: 'Failed to remove placement drive.'));
+      }
+    }
+  }
+
   Future<void> _onAssignRecruiter(
     AssignRecruiterEvent event,
     Emitter<PlacementHubState> emit,
@@ -147,7 +247,6 @@ class PlacementHubBloc extends Bloc<PlacementHubEvent, PlacementHubState> {
         driveCycle: event.driveCycle,
       );
 
-      // Create new recruiter entry for local dynamic UI responsiveness
       final updatedRecruiters = List<RecruiterAllocationModel>.from(currentState.dashboardData.recruiters)
         ..add(RecruiterAllocationModel(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -156,7 +255,7 @@ class PlacementHubBloc extends Bloc<PlacementHubEvent, PlacementHubState> {
               ? event.coordinatorName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
               : 'RC',
           name: event.coordinatorName,
-          title: 'Assigned Officer (${event.driveCycle})',
+          title: 'Assigned Coordinator (${event.driveCycle})',
           activeCount: 1,
         ));
 
@@ -172,6 +271,7 @@ class PlacementHubBloc extends Bloc<PlacementHubEvent, PlacementHubState> {
       emit(currentState.copyWith(
         dashboardData: newDashboard,
         isSubmitting: false,
+        successMessage: 'Coordinator assigned to ${event.driveCycle}.',
       ));
     }
   }

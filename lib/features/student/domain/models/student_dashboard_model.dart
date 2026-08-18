@@ -78,6 +78,7 @@ class StudentProfileData {
   final List<String> skills;
   final String resumeUrl;
   final String photo;
+  final double percentage;
 
   const StudentProfileData({
     required this.id,
@@ -97,6 +98,7 @@ class StudentProfileData {
     this.skills = const [],
     this.resumeUrl = '',
     this.photo = '',
+    this.percentage = 0.0,
   });
 
   factory StudentProfileData.fromJson(Map<String, dynamic> json) {
@@ -118,6 +120,7 @@ class StudentProfileData {
       skills: (json['skills'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       resumeUrl: json['resumeUrl']?.toString() ?? json['resume']?.toString() ?? '',
       photo: json['photo']?.toString() ?? '',
+      percentage: (json['percentage'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -140,6 +143,7 @@ class StudentProfileData {
       'skills': skills,
       'resumeUrl': resumeUrl,
       'photo': photo,
+      'percentage': percentage,
     };
   }
 
@@ -162,6 +166,7 @@ class StudentProfileData {
       skills: [],
       resumeUrl: '',
       photo: '',
+      percentage: 0.0,
     );
   }
 

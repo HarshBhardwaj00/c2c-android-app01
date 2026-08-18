@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/constants/app_colors.dart';
 
+/// Production-ready College Navigation Drawer containing strictly the 8 core
+/// navigation items synchronized with the web platform.
 class CollegeNavigationDrawer extends StatelessWidget {
   final String currentRoute;
 
@@ -14,6 +17,8 @@ class CollegeNavigationDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
     return Drawer(
       backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
@@ -21,133 +26,102 @@ class CollegeNavigationDrawer extends StatelessWidget {
         borderRadius: BorderRadius.horizontal(right: Radius.circular(20)),
       ),
       child: SafeArea(
+        bottom: true,
         child: Column(
           children: [
             // Drawer Header
             _buildDrawerHeader(context),
             const Divider(height: 1, color: AppColors.border),
 
-            // Navigation List
+            // Navigation List: Exactly the 8 items from the Web Panel
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                 children: [
-                  _buildSectionHeader('CORE DASHBOARD'),
+                  // 1. Dashboard
                   _buildDrawerItem(
                     context,
-                    icon: LucideIcons.layoutDashboard,
-                    title: 'Executive Overview',
+                    icon: LucideIcons.layoutGrid,
+                    title: 'Dashboard',
                     route: '/college/dashboard',
                     isSelected: currentRoute == '/college/dashboard',
                   ),
-                  _buildDrawerItem(
-                    context,
-                    icon: LucideIcons.users,
-                    title: 'Student Directory',
-                    route: '/college/students',
-                    isSelected: currentRoute == '/college/students',
-                  ),
-                  _buildDrawerItem(
-                    context,
-                    icon: LucideIcons.briefcase,
-                    title: 'Placement Hub',
-                    route: '/college/drives',
-                    isSelected: currentRoute == '/college/drives',
-                  ),
-                  _buildDrawerItem(
-                    context,
-                    icon: LucideIcons.gitCommit,
-                    title: 'Job Pipeline',
-                    route: '/college/drives/d1/pipeline',
-                    isSelected: currentRoute.contains('/pipeline'),
-                  ),
-                  _buildDrawerItem(
-                    context,
-                    icon: LucideIcons.building2,
-                    title: 'Company Directory',
-                    route: '/college/companies/c1',
-                    isSelected: currentRoute.contains('/companies'),
-                  ),
 
-                  const SizedBox(height: 12),
-                  _buildSectionHeader('ANALYTICS & READINESS'),
-                  _buildDrawerItem(
-                    context,
-                    icon: LucideIcons.barChart3,
-                    title: 'Departmental Analytics',
-                    route: '/college/analytics/department',
-                    isSelected: currentRoute == '/college/analytics/department',
-                  ),
-                  _buildDrawerItem(
-                    context,
-                    icon: LucideIcons.gitCompare,
-                    title: 'Department Comparison',
-                    route: '/college/analytics/compare',
-                    isSelected: currentRoute == '/college/analytics/compare',
-                  ),
-                  _buildDrawerItem(
-                    context,
-                    icon: LucideIcons.target,
-                    title: 'Readiness Analytics',
-                    route: '/college/analytics/readiness',
-                    isSelected: currentRoute == '/college/analytics/readiness',
-                  ),
-                  _buildDrawerItem(
-                    context,
-                    icon: LucideIcons.alertTriangle,
-                    title: 'At-Risk Students',
-                    route: '/college/students/at-risk',
-                    isSelected: currentRoute == '/college/students/at-risk',
-                    badge: 'Alerts',
-                    badgeColor: AppColors.errorLight,
-                    badgeTextColor: AppColors.error,
-                  ),
-                  _buildDrawerItem(
-                    context,
-                    icon: LucideIcons.sparkles,
-                    title: 'Placement Intelligence',
-                    route: '/college/analytics/intelligence',
-                    isSelected: currentRoute == '/college/analytics/intelligence',
-                  ),
+                  // 2. Student Records
                   _buildDrawerItem(
                     context,
                     icon: LucideIcons.graduationCap,
-                    title: 'Assessments & Learning',
-                    route: '/college/analytics/assessments',
-                    isSelected: currentRoute == '/college/analytics/assessments',
+                    title: 'Student Records',
+                    route: '/college/students',
+                    isSelected: currentRoute == '/college/students' || currentRoute.startsWith('/college/students/'),
                   ),
 
-                  const SizedBox(height: 12),
-                  _buildSectionHeader('OPERATIONS & ADMIN'),
+                  // 3. Placement Management
+                  _buildDrawerItem(
+                    context,
+                    icon: LucideIcons.briefcase,
+                    title: 'Placement Management',
+                    route: '/college/drives',
+                    isSelected: currentRoute == '/college/drives' || currentRoute.startsWith('/college/drives/'),
+                  ),
+
+                  // 4. Broadcast Center
                   _buildDrawerItem(
                     context,
                     icon: LucideIcons.megaphone,
-                    title: 'Communication Hub',
-                    route: '/college/operations/communication',
-                    isSelected: currentRoute == '/college/operations/communication',
+                    title: 'Broadcast Center',
+                    route: '/college/broadcast',
+                    isSelected: currentRoute == '/college/broadcast' || currentRoute == '/college/operations/communication',
                   ),
+
+                  // 5. Recruiter Coordination
                   _buildDrawerItem(
                     context,
-                    icon: LucideIcons.settings,
-                    title: 'Institutional Settings',
-                    route: '/college/operations/config',
-                    isSelected: currentRoute == '/college/operations/config',
+                    icon: LucideIcons.userCheck,
+                    title: 'Recruiter Coordination',
+                    route: '/college/recruiters',
+                    isSelected: currentRoute == '/college/recruiters',
                   ),
+
+                  // 6. Batch Groups
                   _buildDrawerItem(
                     context,
-                    icon: LucideIcons.fileSpreadsheet,
+                    icon: LucideIcons.users,
+                    title: 'Batch Groups',
+                    route: '/college/batches',
+                    isSelected: currentRoute == '/college/batches',
+                  ),
+
+                  // 7. Reports & Analytics
+                  _buildDrawerItem(
+                    context,
+                    icon: LucideIcons.barChart2,
                     title: 'Reports & Analytics',
                     route: '/college/reports',
                     isSelected: currentRoute == '/college/reports',
+                  ),
+
+                  // 8. Settings
+                  _buildDrawerItem(
+                    context,
+                    icon: LucideIcons.settings,
+                    title: 'Settings',
+                    route: '/college/settings',
+                    isSelected: currentRoute == '/college/settings' || currentRoute == '/college/operations/config',
                   ),
                 ],
               ),
             ),
 
-            // Footer Logout Section
+            // Footer Logout Section with Safe Padding
             const Divider(height: 1, color: AppColors.border),
             Padding(
-              padding: const EdgeInsets.all(12.0),
+              padding: EdgeInsets.only(
+                left: 12.0,
+                right: 12.0,
+                top: 10.0,
+                bottom: bottomInset == 0 ? 12.0 : bottomInset + 4.0,
+              ),
               child: InkWell(
                 onTap: () {
                   HapticFeedback.lightImpact();
@@ -161,13 +135,13 @@ class CollegeNavigationDrawer extends StatelessWidget {
                     color: AppColors.errorLight,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(LucideIcons.logOut, size: 18, color: AppColors.error),
-                      SizedBox(width: 10),
+                      const Icon(LucideIcons.logOut, size: 18, color: AppColors.error),
+                      const SizedBox(width: 10),
                       Text(
                         'Logout Session',
-                        style: TextStyle(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: AppColors.error,
@@ -187,7 +161,7 @@ class CollegeNavigationDrawer extends StatelessWidget {
   Widget _buildDrawerHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      color: AppColors.primaryLight.withValues(alpha: 0.4),
+      color: AppColors.primaryLight.withValues(alpha: 0.35),
       child: Row(
         children: [
           Container(
@@ -196,37 +170,45 @@ class CollegeNavigationDrawer extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(12),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x336366F1),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                ),
+              ],
             ),
             alignment: Alignment.center,
-            child: const Text(
+            child: Text(
               'C2C',
-              style: TextStyle(
+              style: GoogleFonts.plusJakartaSans(
                 color: Colors.white,
                 fontWeight: FontWeight.w900,
-                fontSize: 16,
+                fontSize: 15,
               ),
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Apex Tech Institute',
+                  'College / Institute',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
-                  'TPO Officer Admin',
-                  style: TextStyle(
-                    fontSize: 12,
+                  'TPO Administrative Portal',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -238,70 +220,35 @@ class CollegeNavigationDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8, top: 8, bottom: 6),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color: AppColors.textMuted,
-          letterSpacing: 0.8,
-        ),
-      ),
-    );
-  }
-
   Widget _buildDrawerItem(
     BuildContext context, {
     required IconData icon,
     required String title,
     required String route,
     required bool isSelected,
-    String? badge,
-    Color? badgeColor,
-    Color? badgeTextColor,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
-        color: isSelected ? AppColors.primaryLight : Colors.transparent,
+        color: isSelected ? const Color(0xFFF3E8FF) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
         dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         leading: Icon(
           icon,
-          size: 18,
-          color: isSelected ? AppColors.primary : AppColors.textSecondary,
+          size: 19,
+          color: isSelected ? const Color(0xFF7C3AED) : const IconThemeData().color ?? const Color(0xFF64748B),
         ),
         title: Text(
           title,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? AppColors.primary : AppColors.textPrimary,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13.5,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            color: isSelected ? const Color(0xFF7C3AED) : const Color(0xFF334155),
           ),
         ),
-        trailing: badge != null
-            ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: badgeColor ?? AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  badge,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: badgeTextColor ?? AppColors.primary,
-                  ),
-                ),
-              )
-            : null,
         onTap: () {
           HapticFeedback.lightImpact();
           Navigator.pop(context); // Close Drawer

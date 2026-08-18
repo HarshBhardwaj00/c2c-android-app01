@@ -18,6 +18,8 @@ import '../../features/admin/presentation/pages/admin_dashboard_page.dart';
 import '../../features/mentor/presentation/pages/mentor_dashboard_page.dart';
 import '../../features/recruiter/presentation/pages/recruiter_dashboard_page.dart';
 
+import 'package:lucide_icons/lucide_icons.dart';
+
 // College Module Page Imports
 import '../../features/college/presentation/pages/college_dashboard_page.dart';
 import '../../features/college/presentation/pages/student_directory_page.dart';
@@ -34,6 +36,7 @@ import '../../features/college/presentation/pages/assessments_learning_page.dart
 import '../../features/college/presentation/pages/communication_hub_page.dart';
 import '../../features/college/presentation/pages/institutional_config_page.dart';
 import '../../features/college/presentation/pages/reports_admin_analytics_page.dart';
+import '../../features/college/presentation/pages/college_generic_view_page.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -213,15 +216,23 @@ class AppRouter {
         builder: (context, state) => const AssessmentsLearningPage(),
       ),
 
-      // Screen 13: Communication Hub
+      // Screen 13: Communication / Broadcast Center
       GoRoute(
         path: '/college/operations/communication',
         builder: (context, state) => const CommunicationHubPage(),
       ),
+      GoRoute(
+        path: '/college/broadcast',
+        builder: (context, state) => const CommunicationHubPage(),
+      ),
 
-      // Screen 14: Institutional Configuration
+      // Screen 14: Institutional Configuration / Settings
       GoRoute(
         path: '/college/operations/config',
+        builder: (context, state) => const InstitutionalConfigPage(),
+      ),
+      GoRoute(
+        path: '/college/settings',
         builder: (context, state) => const InstitutionalConfigPage(),
       ),
 
@@ -229,6 +240,34 @@ class AppRouter {
       GoRoute(
         path: '/college/reports',
         builder: (context, state) => const ReportsAdminAnalyticsPage(),
+      ),
+
+      // Route 5: Recruiter Coordination
+      GoRoute(
+        path: '/college/recruiters',
+        builder: (context, state) => const CollegeGenericViewPage(
+          title: 'Recruiter Coordination',
+          currentRoute: '/college/recruiters',
+          icon: LucideIcons.userCheck,
+          description: 'Coordinate with corporate recruiters, manage partner company relationships, and schedule campus hiring rounds.',
+        ),
+      ),
+
+      // Route 6: Batch Groups
+      GoRoute(
+        path: '/college/batches',
+        builder: (context, state) => const CollegeGenericViewPage(
+          title: 'Batch Groups',
+          currentRoute: '/college/batches',
+          icon: LucideIcons.users,
+          description: 'Manage academic graduating batches, department sections, and student placement eligibility groups.',
+        ),
+      ),
+
+      // Placements Alias
+      GoRoute(
+        path: '/college/placements',
+        builder: (context, state) => const PlacementHubPage(),
       ),
     ],
   );

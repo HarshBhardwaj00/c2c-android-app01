@@ -18,7 +18,7 @@ class CustomBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final sysBottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Container(
       decoration: const BoxDecoration(
@@ -35,10 +35,10 @@ class CustomBottomNav extends StatelessWidget {
         ],
       ),
       padding: EdgeInsets.only(
-        left: 8,
-        right: 8,
-        top: 6,
-        bottom: bottomInset > 0 ? bottomInset + 4 : 10,
+        left: 8.0,
+        right: 8.0,
+        top: 6.0,
+        bottom: sysBottomPadding == 0 ? 16.0 : sysBottomPadding + 6.0,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -138,33 +138,31 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isSelected) {
-      // Active Pill Style matching Figma (Purple Pill with White Icon & Text - Overflow Safe)
       return GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
           decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(20),
+            color: AppColors.primaryLight,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFDDD6FE)),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Column(
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(activeIcon, color: Colors.white, size: 18),
-              const SizedBox(width: 4),
-              Flexible(
-                child: AutoSizeText(
-                  label,
-                  maxLines: 1,
-                  minFontSize: 9,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Icon(activeIcon, color: AppColors.primary, size: 19),
+              const SizedBox(height: 2),
+              AutoSizeText(
+                label,
+                maxLines: 1,
+                minFontSize: 8,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
@@ -177,11 +175,12 @@ class _NavItem extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 2),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: AppColors.textSecondary, size: 20),
+            Icon(icon, color: AppColors.textSecondary, size: 19),
             const SizedBox(height: 2),
             AutoSizeText(
               label,

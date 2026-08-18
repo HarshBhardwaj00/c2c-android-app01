@@ -81,13 +81,27 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
     try {
       final data = await _apiService.getHiringDrivesData();
       final skillData = await _apiService.getSkillScore();
+      final apps = await _apiService.getApplications();
       if (!mounted) return;
       final fetchedDrives = (data['drives'] as List<Map<String, dynamic>>?) ?? [];
 
+      final appliedIds = apps.map((a) => (a['id'] ?? '').toString()).toSet();
+      for (final d in fetchedDrives) {
+        if (appliedIds.contains((d['id'] ?? '').toString())) {
+          d['applied'] = true;
+        }
+      }
+
+      final appliedCount = apps.length;
+      final shortlistedCount = apps.where((a) {
+        final st = (a['status'] ?? '').toString().toLowerCase();
+        return st == 'graded' || st == 'shortlisted' || st == 'accepted' || st == 'selected';
+      }).length;
+
       setState(() {
         _drives = fetchedDrives.isNotEmpty ? fetchedDrives : _fallbackDrives();
-        _appliedCount = (data['appliedCount'] as num?)?.toInt() ?? 2;
-        _shortlistedCount = (data['shortlistedCount'] as num?)?.toInt() ?? 1;
+        _appliedCount = appliedCount > 0 ? appliedCount : ((data['appliedCount'] as num?)?.toInt() ?? 0);
+        _shortlistedCount = shortlistedCount > 0 ? shortlistedCount : ((data['shortlistedCount'] as num?)?.toInt() ?? 0);
         _skillScore = (skillData['skillScore'] as num?)?.toInt() ?? 88;
         _eligibilityStatus = (skillData['eligibilityStatus'] ?? 'Eligible for Top Drives').toString();
         _isLoading = false;
@@ -96,8 +110,8 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
       if (!mounted) return;
       setState(() {
         _drives = _fallbackDrives();
-        _appliedCount = 2;
-        _shortlistedCount = 1;
+        _appliedCount = 0;
+        _shortlistedCount = 0;
         _isLoading = false;
       });
     }
@@ -392,7 +406,7 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Badges Wrap: Placement drives & AI Skill Score Badge (Overflow-Free)
+          // Badges Wrap: Placement drives & AI Skill Score Badge (Overflow-Free with FittedBox)
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -404,20 +418,23 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
                   color: AppColors.primaryLight,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(LucideIcons.briefcase, size: 13, color: AppColors.primary),
-                    SizedBox(width: 6),
-                    Text(
-                      'Placement drives',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryDark,
+                child: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(LucideIcons.briefcase, size: 13, color: AppColors.primary),
+                      SizedBox(width: 6),
+                      Text(
+                        'Placement drives',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryDark,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               Container(
@@ -427,20 +444,23 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: const Color(0xFF86EFAC)),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(LucideIcons.sparkles, size: 13, color: Color(0xFF15803D)),
-                    const SizedBox(width: 5),
-                    Text(
-                      'AI Index: $_skillScore/100 • $_eligibilityStatus',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF15803D),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(LucideIcons.sparkles, size: 13, color: Color(0xFF15803D)),
+                      const SizedBox(width: 5),
+                      Text(
+                        'AI Index: $_skillScore/100 • $_eligibilityStatus',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF15803D),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -504,13 +524,15 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
                 color: AppColors.primary,
               ),
               SizedBox(width: 8),
-              Text(
-                'Open drives',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.2,
+              Expanded(
+                child: Text(
+                  'Open drives',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
             ],
@@ -520,8 +542,10 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
+              AutoSizeText(
                 '$openCount',
+                maxLines: 1,
+                minFontSize: 20,
                 style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
@@ -647,8 +671,10 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
             child: Icon(icon, size: 16, color: iconColor),
           ),
           const SizedBox(height: 10),
-          Text(
+          AutoSizeText(
             label,
+            maxLines: 1,
+            minFontSize: 8,
             style: const TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w800,
@@ -657,8 +683,10 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
+          AutoSizeText(
             value,
+            maxLines: 1,
+            minFontSize: 14,
             style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w900,
@@ -980,19 +1008,23 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  statusLabel,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
-                    color: statusText,
-                    letterSpacing: 0.4,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    statusLabel,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: statusText,
+                      letterSpacing: 0.4,
+                    ),
                   ),
                 ),
               ),
@@ -1043,6 +1075,7 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
                 ctc,
                 style: const TextStyle(
@@ -1072,6 +1105,7 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
               const Icon(LucideIcons.users, size: 14, color: AppColors.textMuted),
               const SizedBox(width: 4),
               Text(
@@ -1101,12 +1135,17 @@ class _StudentHiringProcessPageState extends State<StudentHiringProcessPage> {
                   color: AppColors.textSecondary,
                 ),
               ),
-              Text(
-                'Eligibility: $eligibility',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'Eligibility: $eligibility',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -1395,16 +1434,20 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    AutoSizeText(
                       '${widget.company} Hiring Assessment',
+                      maxLines: 1,
+                      minFontSize: 13,
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    Text(
+                    AutoSizeText(
                       widget.role,
+                      maxLines: 1,
+                      minFontSize: 11,
                       style: const TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
@@ -1540,8 +1583,10 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
                   const Icon(LucideIcons.sparkles, size: 14, color: AppColors.primary),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
+                    child: AutoSizeText(
                       roundTitle,
+                      maxLines: 1,
+                      minFontSize: 10,
                       style: const TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w800,
@@ -1549,6 +1594,7 @@ class _HiringAssessmentSheetState extends State<_HiringAssessmentSheet> {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     '${_currentIndex + 1}/${_questions.length}',
                     style: const TextStyle(

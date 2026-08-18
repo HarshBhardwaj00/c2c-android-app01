@@ -58,6 +58,7 @@ class _StudentProfileViewState extends State<StudentProfileView> {
   late final TextEditingController _collegeController;
   late final TextEditingController _branchController;
   late final TextEditingController _semesterController;
+  late final TextEditingController _percentageController;
   late final TextEditingController _locationController;
   late final TextEditingController _bioController;
   late final TextEditingController _githubController;
@@ -81,6 +82,11 @@ class _StudentProfileViewState extends State<StudentProfileView> {
     _collegeController = TextEditingController(text: p?.college ?? '');
     _branchController = TextEditingController(text: p?.branch ?? '');
     _semesterController = TextEditingController(text: p?.semester != null && p!.semester > 0 ? '${p.semester}' : '');
+    _percentageController = TextEditingController(
+      text: (p?.percentage != null && p!.percentage > 0)
+          ? (p.percentage % 1 == 0 ? p.percentage.toInt().toString() : p.percentage.toString())
+          : '',
+    );
     _locationController = TextEditingController(text: p?.location ?? '');
     _bioController = TextEditingController(text: p?.bio ?? '');
     _githubController = TextEditingController(text: p?.github ?? '');
@@ -102,6 +108,7 @@ class _StudentProfileViewState extends State<StudentProfileView> {
     _collegeController.dispose();
     _branchController.dispose();
     _semesterController.dispose();
+    _percentageController.dispose();
     _locationController.dispose();
     _bioController.dispose();
     _githubController.dispose();
@@ -128,6 +135,12 @@ class _StudentProfileViewState extends State<StudentProfileView> {
             if (p['branch'] != null) _branchController.text = p['branch'].toString();
             if (p['semester'] != null && p['semester'] != 0) {
               _semesterController.text = p['semester'].toString();
+            }
+            if (p['percentage'] != null) {
+              final pct = (p['percentage'] as num).toDouble();
+              if (pct > 0) {
+                _percentageController.text = pct % 1 == 0 ? pct.toInt().toString() : pct.toString();
+              }
             }
             if (p['location'] != null) _locationController.text = p['location'].toString();
             if (p['bio'] != null) _bioController.text = p['bio'].toString();
@@ -184,6 +197,10 @@ class _StudentProfileViewState extends State<StudentProfileView> {
         _collegeController.text = (p['college'] ?? '').toString();
         _branchController.text = (p['branch'] ?? '').toString();
         _semesterController.text = (p['semester'] != null && p['semester'] != 0) ? p['semester'].toString() : '';
+        if (p['percentage'] != null) {
+          final pct = (p['percentage'] as num).toDouble();
+          _percentageController.text = pct > 0 ? (pct % 1 == 0 ? pct.toInt().toString() : pct.toString()) : '';
+        }
         _locationController.text = (p['location'] ?? '').toString();
         _bioController.text = (p['bio'] ?? '').toString();
         _githubController.text = (p['github'] ?? '').toString();
@@ -250,6 +267,16 @@ class _StudentProfileViewState extends State<StudentProfileView> {
     return null;
   }
 
+  String? _validatePercentage(String value) {
+    final t = value.trim();
+    if (t.isEmpty) return 'Academic percentage is required (0-100)';
+    final n = double.tryParse(t);
+    if (n == null || n < 0 || n > 100) {
+      return 'Percentage must be a valid number between 0 and 100';
+    }
+    return null;
+  }
+
   /// Resolves relative URLs (e.g. /uploads/...) to full absolute URIs.
   Uri _resolveUri(String value) {
     if (value.startsWith('http://') || value.startsWith('https://')) {
@@ -266,7 +293,8 @@ class _StudentProfileViewState extends State<StudentProfileView> {
     final nameError = _validateName(nameValue);
     final phoneError = _validatePhone(_phoneController.text);
     final semesterError = _validateSemester(_semesterController.text);
-    final firstError = nameError ?? phoneError ?? semesterError;
+    final pctError = _validatePercentage(_percentageController.text);
+    final firstError = nameError ?? phoneError ?? semesterError ?? pctError;
 
     if (firstError != null) {
       HapticFeedback.vibrate();
@@ -285,6 +313,7 @@ class _StudentProfileViewState extends State<StudentProfileView> {
     });
 
     final semester = int.tryParse(_semesterController.text.trim()) ?? 0;
+    final percentage = double.tryParse(_percentageController.text.trim()) ?? 0.0;
     final payload = {
       'name': nameValue,
       'fullName': nameValue,
@@ -292,6 +321,7 @@ class _StudentProfileViewState extends State<StudentProfileView> {
       'college': _collegeController.text.trim(),
       'branch': _branchController.text.trim(),
       'semester': semester,
+      'percentage': percentage,
       'location': _locationController.text.trim(),
       'bio': _bioController.text.trim(),
       'github': _githubController.text.trim(),
@@ -735,8 +765,13 @@ class _StudentProfileViewState extends State<StudentProfileView> {
     final initial = nameText.isNotEmpty ? nameText[0].toUpperCase() : 'S';
     final branchText = _branchController.text.trim();
     final semText = _semesterController.text.trim();
-    final academicSub = (branchText.isNotEmpty || semText.isNotEmpty)
-        ? [branchText, semText.isNotEmpty ? 'Semester $semText' : ''].where((s) => s.isNotEmpty).join(' • ')
+    final pctText = _percentageController.text.trim();
+    final academicSub = (branchText.isNotEmpty || semText.isNotEmpty || pctText.isNotEmpty)
+        ? [
+            branchText,
+            semText.isNotEmpty ? 'Semester $semText' : '',
+            pctText.isNotEmpty ? '$pctText% Aggregate' : '',
+          ].where((s) => s.isNotEmpty).join(' • ')
         : 'Academic details not added';
 
     return SingleChildScrollView(
@@ -1076,6 +1111,13 @@ class _StudentProfileViewState extends State<StudentProfileView> {
                 icon: LucideIcons.calendar,
                 enabled: _isEditing,
                 keyboardType: TextInputType.number,
+              ),
+              _buildInputField(
+                controller: _percentageController,
+                label: 'Academic Percentage (%) *',
+                icon: LucideIcons.percent,
+                enabled: _isEditing,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
               _buildInputField(
                 controller: _locationController,
